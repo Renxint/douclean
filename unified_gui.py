@@ -990,12 +990,9 @@ class MainWindow(QMainWindow):
         self.setStyleSheet(STYLE)
 
         # 任务栏/标题栏图标
-        if getattr(sys, 'frozen', False):
-            self.setWindowIcon(QIcon(sys.executable))  # exe 自带图标
-        else:
-            ico = Path.home() / "Desktop" / "抖音下载器_风格3_纯白甜心.ico"
-            if ico.exists():
-                self.setWindowIcon(QIcon(str(ico)))
+        ico = BASE_DIR / "app.ico"
+        if ico.exists():
+            self.setWindowIcon(QIcon(str(ico)))
 
         self.stack = QStackedWidget()
         self.setCentralWidget(self.stack)
