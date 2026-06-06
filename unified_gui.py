@@ -22,7 +22,7 @@ VERSION_URL = "https://gitee.com/Renxint/douyin-downloader/raw/master/version.js
 DINGTALK_WEBHOOK = "https://oapi.dingtalk.com/robot/send?access_token=140b22bf4f35c675bf36c7441a78871f4678762df788dd7079dd0f565f312ee9"
 
 
-def load_font() -> QFont | None:
+def load_font():
     """加载用户保存的字体设置"""
     try:
         if SETTINGS_FILE.exists():
@@ -34,7 +34,7 @@ def load_font() -> QFont | None:
     return None
 
 
-def save_font(font: QFont):
+def save_font(font):
     """保存字体设置"""
     try:
         SETTINGS_FILE.write_text(
