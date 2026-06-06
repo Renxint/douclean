@@ -20,6 +20,29 @@ CREATE_NO_WINDOW = 0x08000000 if sys.platform == 'win32' else 0
 VERSION = "1.0.0"
 VERSION_URL = "https://gitee.com/Renxint/douyin-downloader/raw/master/version.json"
 DINGTALK_WEBHOOK = "https://oapi.dingtalk.com/robot/send?access_token=140b22bf4f35c675bf36c7441a78871f4678762df788dd7079dd0f565f312ee9"
+SETTINGS_FILE = EXE_DIR / "settings.json"
+
+
+def load_font() -> QFont | None:
+    """加载用户保存的字体设置"""
+    try:
+        if SETTINGS_FILE.exists():
+            data = json.loads(SETTINGS_FILE.read_text(encoding='utf-8'))
+            f = QFont(data.get("family", ""))
+            if data.get("size"): f.setPointSize(data["size"])
+            return f
+    except: pass
+    return None
+
+
+def save_font(font: QFont):
+    """保存字体设置"""
+    try:
+        SETTINGS_FILE.write_text(
+            json.dumps({"family": font.family(), "size": font.pointSize()}, ensure_ascii=False),
+            encoding='utf-8'
+        )
+    except: pass
 
 # PyInstaller 路径适配
 if getattr(sys, 'frozen', False):
@@ -40,7 +63,7 @@ from PyQt6.QtWidgets import (
     QMessageBox, QInputDialog, QFrame,
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
-from PyQt6.QtGui import QPalette, QColor, QIcon
+from PyQt6.QtGui import QPalette, QColor, QIcon, QFont
 
 import requests
 
@@ -524,6 +547,7 @@ class ModePage(QWidget):
     """首页：选择单视频 或 主页批量"""
     single_clicked = pyqtSignal()
     homepage_clicked = pyqtSignal()
+    font_changed = pyqtSignal(QFont)
 
     def __init__(self):
         super().__init__()
@@ -561,21 +585,36 @@ class ModePage(QWidget):
 
         layout.addLayout(btn_layout)
 
-        # 反馈按钮
-        feedback_layout = QHBoxLayout()
-        feedback_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        # 反馈 + 字体
+        bottom_layout = QHBoxLayout()
+        bottom_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        bottom_layout.setSpacing(12)
+        self.font_btn = QPushButton("字体设置")
+        self.font_btn.setObjectName("secondaryBtn")
+        self.font_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.font_btn.clicked.connect(self._choose_font)
+        self.font_btn.setFixedWidth(120)
+        bottom_layout.addWidget(self.font_btn)
         self.feedback_btn = QPushButton("反馈建议")
         self.feedback_btn.setObjectName("secondaryBtn")
         self.feedback_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.feedback_btn.clicked.connect(self._send_feedback)
-        self.feedback_btn.setFixedWidth(200)
-        feedback_layout.addWidget(self.feedback_btn)
-        layout.addLayout(feedback_layout)
+        self.feedback_btn.setFixedWidth(120)
+        bottom_layout.addWidget(self.feedback_btn)
+        layout.addLayout(bottom_layout)
 
         status = QLabel(f"Cookie 自动管理 | 过期弹窗更新 | v{VERSION}")
         status.setStyleSheet("color: #555; font-size: 11px;")
         status.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(status)
+
+    def _choose_font(self):
+        from PyQt6.QtWidgets import QFontDialog
+        current = load_font() or self.font()
+        font, ok = QFontDialog.getFont(current, self, "选择字体")
+        if ok:
+            save_font(font)
+            self.font_changed.emit(font)
 
     def _send_feedback(self):
         from PyQt6.QtWidgets import QInputDialog, QMessageBox
@@ -1009,11 +1048,20 @@ class MainWindow(QMainWindow):
         self.mode_page.homepage_clicked.connect(lambda: self.stack.setCurrentIndex(2))
         self.single_page.back_clicked.connect(lambda: self.stack.setCurrentIndex(0))
         self.homepage_page.back_clicked.connect(lambda: self.stack.setCurrentIndex(0))
+        self.mode_page.font_changed.connect(self._apply_font)
+
+        # 加载保存的字体
+        saved = load_font()
+        if saved:
+            QApplication.instance().setFont(saved)
 
         self.stack.setCurrentIndex(0)
 
         # 后台检查版本更新
         threading.Thread(target=self._check_version, daemon=True).start()
+
+    def _apply_font(self, font):
+        QApplication.instance().setFont(font)
 
     def _check_version(self):
         try:
