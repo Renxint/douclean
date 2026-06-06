@@ -40,7 +40,7 @@ from PyQt6.QtWidgets import (
     QMessageBox, QInputDialog, QFrame,
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
-from PyQt6.QtGui import QPalette, QColor
+from PyQt6.QtGui import QPalette, QColor, QIcon
 
 import requests
 
@@ -988,6 +988,14 @@ class MainWindow(QMainWindow):
         self.resize(800, 620)
         self.setMinimumSize(600, 450)
         self.setStyleSheet(STYLE)
+
+        # 任务栏/标题栏图标
+        if getattr(sys, 'frozen', False):
+            self.setWindowIcon(QIcon(sys.executable))  # exe 自带图标
+        else:
+            ico = Path.home() / "Desktop" / "抖音下载器_风格3_纯白甜心.ico"
+            if ico.exists():
+                self.setWindowIcon(QIcon(str(ico)))
 
         self.stack = QStackedWidget()
         self.setCentralWidget(self.stack)
