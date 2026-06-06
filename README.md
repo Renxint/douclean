@@ -1,61 +1,151 @@
-# 抖音下载器
+# 抖音下载器 v1.0.0
 
-> 抖音用户主页视频/图集一键下载，支持增量更新、断点续传
+抖音作品下载工具，支持**单视频下载**和**主页批量下载**。
 
-## 功能
+---
 
-- 输入抖音用户主页链接，自动下载全部作品
-- 视频: 自动选最高画质 (bit_rate > 无水印 > 普通)
-- 图集: 批量下载图片 + 实况图联动视频
-- 增量更新: 已下载的作品跳过，新作品自动追加
-- PyQt6 桌面界面: 暂停/继续/取消，下载历史管理
+## 用户使用说明
 
-## 架构
+### 下载安装
 
+1. 从 [发行版](https://gitee.com/Renxint/douyin-downloader) 下载最新 `抖音下载器.zip`
+2. 解压到任意文件夹
+3. 双击 `抖音下载器.exe` 即可运行
+
+**系统要求：** Windows 10+，无需安装任何额外软件
+
+---
+
+### 获取 Cookie（必需）
+
+下载需要登录态 Cookie，获取方式：
+
+1. 浏览器打开 `douyin.com` 并**扫码登录**
+2. 按 `F12` → **Application**（应用）标签
+3. 左侧 **Cookies** → 点击 `www.douyin.com`
+4. **Ctrl+A 全选** → **Ctrl+C 复制**
+5. 粘贴到下载器的 Cookie 弹窗中
+
+> Cookie 大约每 1-3 天过期，届时下载器会自动弹窗提示更新。重新按上述步骤获取即可。
+
+---
+
+### 使用方式
+
+启动后有两个模式可选：
+
+**📱 单视频下载：** 粘贴抖音分享链接（如复制口令文本），下载单个视频/图集/实况照片
+
+**👤 主页批量下载：** 粘贴用户主页链接（如 `https://www.douyin.com/user/MS4wLjAB...`），下载该用户全部公开作品
+
+下载的文件保存在 exe 同目录下的 `output/` 文件夹中。
+
+---
+
+## 版本内容
+
+### v1.0.0 (2026-06-08)
+
+- 单视频下载：支持视频、图集、实况照片
+- 主页批量下载：自动翻页、跳过已下载
+- Cookie 自动管理：过期弹窗更新
+- 反馈功能：内置钉钉反馈通道
+- 版本检测：启动时自动检查更新
+
+---
+
+## 开发者指南（如何更新 & 发布）
+
+### 前置准备
+
+1. Python 3.12 + PyInstaller
+2. Node.js（用于打包）
+3. Gitee 仓库权限
+
+### 发布新版本流程
+
+#### 1. 修改代码
+
+在 `projects/douyin_downloader/` 目录下编辑源码：
+- `unified_gui.py` — 主界面
+- `src/api.py` — API 客户端
+- `src/downloader.py` — 下载核心
+- `sign-server/bootstrap.js` — 浏览器自动化
+
+#### 2. 更新版本号
+
+修改 `unified_gui.py` 中的 `VERSION` 变量，以及 `version.json`：
+
+```json
+{
+  "version": "1.0.1",
+  "date": "2026-06-XX",
+  "url": "https://gitee.com/Renxint/douyin-downloader/raw/master/抖音下载器.zip",
+  "note": "修复xxx问题，新增xxx功能"
+}
 ```
-├── main.py             # CLI 入口
-├── main_gui.py         # GUI 入口
-├── src/
-│   ├── api.py          # 抖音 API 客户端 (通过 sign-server 代理)
-│   ├── downloader.py   # 下载核心逻辑
-│   └── gui.py          # PyQt6 桌面界面
-├── sign-server/        # Node.js 签名服务
-├── output/             # 下载输出 (不进 git)
-└── requirements.txt
-```
 
-## 使用方法
+#### 3. 打包
 
 ```bash
-# 1. 安装 Python 依赖
-pip install -r requirements.txt
-
-# 2. 启动签名服务 (Node.js)
-cd sign-server
-npm install
-npm start        # Puppeteer 模式
-# 或
-npm run start-vm # VM 补环境模式
-
-# 3. 运行
-python main.py              # CLI 交互模式
-python main.py <URL>        # CLI 直接下载
-python main_gui.py          # GUI 桌面界面
+cd D:\Pycharm环境\Claude
+pyinstaller --onedir --windowed --name "抖音下载器" \
+  --icon="C:/Users/lenovo/Desktop/抖音下载器_风格3_纯白甜心.ico" \
+  --add-data "projects/douyin_downloader/sign-server;sign-server" \
+  --hidden-import PyQt6 --hidden-import requests \
+  --hidden-import src.api --hidden-import src.downloader \
+  --hidden-import certifi --collect-all certifi \
+  --distpath "C:/Users/lenovo/Desktop" --workpath build_temp -y \
+  projects/douyin_downloader/unified_gui.py
 ```
 
-或双击 `启动.bat` 一键启动 (自动拉起签名服务 + GUI)。
+复制 Node.js 并打包 zip：
 
-## 输出
+```bash
+cp "/c/Program Files/nodejs/node.exe" "C:/Users/lenovo/Desktop/抖音下载器/_internal/node.exe"
+cd C:/Users/lenovo/Desktop
+powershell Compress-Archive -Path "抖音下载器" -DestinationPath "抖音下载器.zip"
+```
 
-每个用户一个独立文件夹 `output/<作者名>/`:
+#### 4. 上传 & 发布
+
+1. 上传 `抖音下载器.zip` 到 Gitee 仓库
+2. 更新 `version.json` 版本号
+3. 提交并推送：
+
+```bash
+cd D:\Pycharm环境\Claude\projects\douyin_downloader
+git add -A
+git commit -m "v1.0.1: 修复xxx"
+git push
 ```
-output/作者名/
-├── 主页链接.md
-├── .downloaded.json        # 下载记录 (增量更新)
-├── 001_作品描述/
-│   ├── desc.md             # 文案
-│   ├── video.mp4           # 视频
-│   └── 01.jpg              # 图片
-├── 002_另一个作品/
-│   └── ...
+
+推送后，所有用户启动时都会自动收到更新提示。
+
+### 项目结构
+
 ```
+douyin_downloader/
+├── unified_gui.py        # 统一 GUI 入口
+├── single_gui.py          # 单视频下载界面
+├── main_gui.py            # 主页批量下载界面
+├── main.py                # CLI 命令行入口
+├── version.json           # 版本信息（公开访问）
+├── src/
+│   ├── api.py             # 抖音 API 客户端（Cookie 直连）
+│   ├── downloader.py      # 主页批量下载核心
+│   └── gui.py             # GUI 组件
+├── sign-server/
+│   ├── bootstrap.js       # 一次性 Puppeteer（单视频用）
+│   ├── puppeteer-server.js # 常驻签名服务（备用）
+│   └── sdk/               # 抖音签名 SDK
+└── old_version_test/      # 旧版代码（存档）
+```
+
+### 钉钉反馈
+
+反馈通过钉钉机器人推送到开发者。Webhook URL 在 `unified_gui.py` 的 `DINGTALK_WEBHOOK` 变量中配置。
+
+### Gitee 仓库
+
+https://gitee.com/Renxint/douyin-downloader
