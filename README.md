@@ -20,13 +20,20 @@
 
 下载需要登录态 Cookie，获取方式：
 
-1. 浏览器打开 `douyin.com` 并**扫码登录**
-2. 按 `F12` → **Network**（网络）标签
-3. 刷新页面，随便点开一个请求（如 `douyin.com`）
-4. 右侧 **Request Headers** → 找到 `Cookie:` 整行 → 右键 **Copy value**
-5. 粘贴到下载器的 Cookie 弹窗中
+1. 浏览器打开 `douyin.com` → 右上角**扫码登录**
+2. 按 `F12` 打开开发者工具 → 点击 **Network**（网络）标签
+3. 按 `F5` 刷新页面，在左侧请求列表顶部的筛选框输入 `aweme`，可以看到筛选出抖音 API 请求
+4. 随便点击其中一个（如 `post/` 或 `detail/` 或 `profile/other/`）
+5. 右侧面板 → **Request Headers**（请求头）→ 找到 `Cookie:` 开头的那一行
+6. 在 `Cookie:` 这一行上**右键 → Copy value**（复制值）
+7. 打开下载器 → 粘贴到 Cookie 弹窗中 → 确定
 
-> ⚠️ 不要用书签脚本或 `document.cookie` 获取，它们拿不到关键的登录 Cookie（`sessionid`、`ttwid` 等），会导致下载失败。
+> **为什么不能用书签脚本？** 书签脚本用的是 `document.cookie`，只能拿到普通 Cookie。
+> 而 `sessionid`、`ttwid`、`sid_guard` 等关键登录 Cookie 的 `HttpOnly` 属性为 `true`，
+> JavaScript 无法读取。**必须从 Network 请求头中获取完整 Cookie。**
+>
+> **如何判断 Cookie 是否正确？** 粘贴后如果包含 `sessionid=` 和 `ttwid=`，
+> 说明获取成功。如果只有 `bd_ticket_guard`、`UIFID` 等字段而缺少这两个，则无效。
 >
 > Cookie 大约每 1-3 天过期，届时下载器会自动弹窗提示更新。重新按上述步骤获取即可。
 
