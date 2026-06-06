@@ -21,11 +21,13 @@
 下载需要登录态 Cookie，获取方式：
 
 1. 浏览器打开 `douyin.com` 并**扫码登录**
-2. 按 `F12` → **Application**（应用）标签
-3. 左侧 **Cookies** → 点击 `www.douyin.com`
-4. **Ctrl+A 全选** → **Ctrl+C 复制**
+2. 按 `F12` → **Network**（网络）标签
+3. 刷新页面，随便点开一个请求（如 `douyin.com`）
+4. 右侧 **Request Headers** → 找到 `Cookie:` 整行 → 右键 **Copy value**
 5. 粘贴到下载器的 Cookie 弹窗中
 
+> ⚠️ 不要用书签脚本或 `document.cookie` 获取，它们拿不到关键的登录 Cookie（`sessionid`、`ttwid` 等），会导致下载失败。
+>
 > Cookie 大约每 1-3 天过期，届时下载器会自动弹窗提示更新。重新按上述步骤获取即可。
 
 ---
