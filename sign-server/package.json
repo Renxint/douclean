@@ -1,0 +1,17 @@
+{
+  "name": "douyin-sign-server",
+  "version": "1.0.0",
+  "description": "抖音签名补环境服务 - 本地签名生成",
+  "main": "server.js",
+  "scripts": {
+    "start": "node puppeteer-server.js",
+    "dev": "node --inspect puppeteer-server.js",
+    "start-vm": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "puppeteer": "^25.1.0",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
+  }
+}

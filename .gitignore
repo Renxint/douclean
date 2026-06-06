@@ -1,0 +1,14 @@
+data/
+output/
+__pycache__/
+*.pyc
+*.spec
+build_temp/
+temp_*
+1.json
+2.json
+输出.txt
+要求.txt
+启动.bat
+node_modules/
+.env
