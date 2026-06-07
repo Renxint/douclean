@@ -1360,7 +1360,28 @@ class SettingsPage(QWidget):
         cb.clicked.connect(self._set_cookie); cbr.addWidget(cb); cc.layout().addLayout(cbr)
         cards_layout.addWidget(cc)
 
-        # Card 4: 关于
+        # Card 4: 使用手册
+        mc = self._card("使用手册")
+        mm = QLabel(
+            "<b>📱 单视频下载</b><br>"
+            "  粘贴抖音分享链接（如复制的口令文本），即可下载单个视频/图集/实况照片。<br>"
+            "  下载完成后自动创建文件夹：<span style='color:#94A3B8;'>作者名（作品描述）/</span><br><br>"
+            "<b>👤 主页批量下载</b><br>"
+            "  粘贴用户主页链接（如 <span style='color:#94A3B8;'>douyin.com/user/MS4wLjAB...</span>），<br>"
+            "  自动翻页下载该用户全部公开作品，已下载的自动跳过。<br><br>"
+            "<b>🍪 Cookie 获取方式</b><br>"
+            "  1. 浏览器打开 douyin.com → 扫码登录<br>"
+            "  2. F12 → Network → 搜索作品标题关键词 → 点击 post/ 请求<br>"
+            "  3. Request Headers → Cookie: 那一行 → 右键 Copy value<br>"
+            "  4. 回到抖净粘贴<br><br>"
+            "<b>⌨️ 快捷键</b><br>"
+            "  Ctrl+H 回首页 &nbsp; Ctrl+, 设置 &nbsp; Ctrl+Q 退出 &nbsp; Esc 最小化"
+        )
+        mm.setStyleSheet("color:#94A3B8;font-size:12px;line-height:1.6;")
+        mm.setWordWrap(True); mm.setTextFormat(Qt.TextFormat.RichText)
+        mc.layout().addWidget(mm); cards_layout.addWidget(mc)
+
+        # Card 5: 关于
         ac = self._card("关于")
         at = QLabel(f"<b>抖净 DouClean</b> &nbsp; v{VERSION}<br><br>抖音无水印下载工具<br>支持单视频 / 图集 / 实况照片 / 主页批量下载<br><br><a href='https://gitee.com/Renxint/douclean' style='color:#E11D48;'>Gitee: gitee.com/Renxint/douclean</a><br><br><span style='color:#64748B;'>© 2026 Renxint</span>")
         at.setOpenExternalLinks(True); at.setStyleSheet("color:#94A3B8;font-size:13px;"); at.setTextFormat(Qt.TextFormat.RichText)
