@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
   "date": "2026-06-08",
-  "url": "https://gitee.com/Renxint/douclean/raw/master/抖音下载器.zip",
-  "note": "抖净 DouClean 首个正式版 - 支持单视频下载和主页批量下载"
+  "url": "https://gitee.com/Renxint/douclean/releases/download/v1.0.0/抖净_v1.0.0.zip",
+  "note": "抖净 DouClean v1.0.0 正式版\n\n功能:\n- 单视频下载 (视频/图集/实况)\n- 主页批量下载\n- Cookie 自动管理\n- 系统托盘 + 快捷键\n- 设置页 (字体/路径/Cookie/使用手册)\n- Cinema Dark 暗色主题\n- 版本自动检测更新"
 }
