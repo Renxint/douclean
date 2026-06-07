@@ -59,20 +59,32 @@ SETTINGS_FILE = EXE_DIR / "settings.json"
 CRASH_LOG = EXE_DIR / "_crash.log"
 
 
+from PyQt6.QtWidgets import (
+    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
+    QLineEdit, QPushButton, QTextEdit, QProgressBar, QLabel, QFileDialog,
+    QStackedWidget, QComboBox, QListWidget, QListWidgetItem, QSplitter,
+    QMessageBox, QInputDialog, QFrame, QMenu, QSystemTrayIcon,
+)
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTranslator, QLocale, QLibraryInfo, QSharedMemory, QTimer
+from PyQt6.QtGui import QPalette, QColor, QIcon, QFont, QAction
+
+import requests
+
+
 # ============================================================
 # 全局：单实例 + 异常钩子
 # ============================================================
-def setup_single_instance() -> QSharedMemory | None:
-    """返回 None 表示是首个实例，否则返回已有实例的内存对象"""
+def setup_single_instance():
+    """返回 None 表示是首个实例"""
     sm = QSharedMemory("DouClean_SingleInstance")
     if sm.attach():
-        return sm  # 已有实例
+        return sm
     sm.create(1)
     return None
 
 
 def global_exception_handler(exc_type, exc_value, exc_tb):
-    """全局未捕获异常 → 写日志 + 弹友好提示"""
+    """全局未捕获异常 → 写日志"""
     import traceback
     tb_str = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
     try:
@@ -81,10 +93,9 @@ def global_exception_handler(exc_type, exc_value, exc_tb):
             encoding='utf-8'
         )
     except: pass
-    # 不弹窗打扰用户，静默记录
 
 
-def load_window_geometry() -> dict | None:
+def load_window_geometry():
     """加载保存的窗口几何信息"""
     try:
         if SETTINGS_FILE.exists():
@@ -94,7 +105,7 @@ def load_window_geometry() -> dict | None:
     return None
 
 
-def save_window_geometry(geometry: dict):
+def save_window_geometry(geometry):
     """保存窗口几何信息"""
     try:
         data = {}
@@ -105,7 +116,7 @@ def save_window_geometry(geometry: dict):
     except: pass
 
 
-def colored_log(msg: str) -> str:
+def colored_log(msg):
     """给日志文本加颜色 HTML"""
     if msg.startswith("[ERROR]") or msg.startswith("[FAIL]"):
         return f'<span style="color:#EF4444">{msg}</span>'
@@ -120,16 +131,6 @@ def colored_log(msg: str) -> str:
 
 sys.excepthook = global_exception_handler
 
-from PyQt6.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QLineEdit, QPushButton, QTextEdit, QProgressBar, QLabel, QFileDialog,
-    QStackedWidget, QComboBox, QListWidget, QListWidgetItem, QSplitter,
-    QMessageBox, QInputDialog, QFrame, QMenu, QSystemTrayIcon,
-)
-from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTranslator, QLocale, QLibraryInfo, QSharedMemory, QTimer
-from PyQt6.QtGui import QPalette, QColor, QIcon, QFont, QAction
-
-import requests
 
 # ============================================================
 # 共享配置
