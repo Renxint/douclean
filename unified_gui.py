@@ -74,17 +74,17 @@ import requests
 # ============================================================
 # 全局：单实例 + 异常钩子
 # ============================================================
-import socket
+import ctypes
+import ctypes.wintypes
 
 def setup_single_instance():
-    """用本地 socket 检测：端口被占用 → 已有实例"""
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.bind(('127.0.0.1', 19998))
-        s.listen(1)
-        return s  # 返回 socket 对象表示首个实例，进程退出时自动释放
-    except OSError:
-        return None  # 端口被占用，已有实例
+    """Windows 命名 Mutex 检测单实例"""
+    mutex_name = "Global\\DouClean_SingleInstance_Mutex"
+    kernel32 = ctypes.windll.kernel32
+    handle = kernel32.CreateMutexW(None, False, mutex_name)
+    if kernel32.GetLastError() == 183:  # ERROR_ALREADY_EXISTS
+        return None
+    return handle  # 进程退出时自动释放
 
 
 def global_exception_handler(exc_type, exc_value, exc_tb):
