@@ -883,7 +883,7 @@ class SinglePage(QWidget):
         back.setObjectName("secondaryBtn")
         back.setCursor(Qt.CursorShape.PointingHandCursor)
         back.clicked.connect(self.back_clicked)
-        back.setFixedSize(80, 36)
+        back.setFixedSize(90, 36)
         top.addWidget(back)
 
         title = QLabel("单视频下载")
@@ -1063,7 +1063,7 @@ class HomepagePage(QWidget):
         back.setObjectName("secondaryBtn")
         back.setCursor(Qt.CursorShape.PointingHandCursor)
         back.clicked.connect(self.back_clicked)
-        back.setFixedSize(80, 36)
+        back.setFixedSize(90, 36)
         top.addWidget(back)
 
         title = QLabel("主页批量下载")
@@ -1311,7 +1311,7 @@ class SettingsPage(QWidget):
         top = QHBoxLayout()
         back = QPushButton("  < 返回"); back.setObjectName("secondaryBtn")
         back.setCursor(Qt.CursorShape.PointingHandCursor); back.clicked.connect(self.back_clicked)
-        back.setFixedSize(80, 36); top.addWidget(back)
+        back.setFixedSize(90, 36); top.addWidget(back)
         icon_lbl = QLabel("S")
         icon_lbl.setStyleSheet("font-size:28px;font-weight:800;color:#E11D48;background:#1A1030;border-radius:12px;min-width:44px;max-width:44px;min-height:44px;max-height:44px;")
         icon_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter); top.addWidget(icon_lbl)
