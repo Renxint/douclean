@@ -1369,7 +1369,7 @@ class SettingsPage(QWidget):
             pl = QLabel(getter()); pl.setStyleSheet("color:#64748B;font-size:12px;background:#0B0B1A;border:1px solid #252550;border-radius:6px;padding:6px 10px;")
             pl.setWordWrap(True); row.addWidget(pl, 1)
             ch = QPushButton("更改"); ch.setObjectName("secondaryBtn"); ch.setCursor(Qt.CursorShape.PointingHandCursor)
-            ch.setFixedWidth(60); ch.clicked.connect(getattr(self, setter)); row.addWidget(ch); pc.layout().addLayout(row)
+            ch.setFixedWidth(72); ch.clicked.connect(getattr(self, setter)); row.addWidget(ch); pc.layout().addLayout(row)
             setattr(self, "single_path_label" if "单" in label else "homepage_path_label", pl)
         cards_layout.addWidget(pc)
 
