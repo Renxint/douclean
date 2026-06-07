@@ -784,8 +784,7 @@ class ModePage(QWidget):
         hl.addWidget(ht)
         hd = QLabel("粘贴用户主页链接\n下载全部公开作品"); hd.setStyleSheet("font-size:12px;color:#64748B;")
         hl.addWidget(hd); hl.addStretch()
-        shadow2 = QGraphicsDropShadowEffect(); shadow2.setBlurRadius(20); shadow2.setOffset(0,4); shadow2.setColor(QColor(0,0,0,80))
-        self.homepage_btn.setGraphicsEffect(shadow2)
+        # shadow removed
         btn_layout.addWidget(self.homepage_btn)
 
         layout.addLayout(btn_layout)
