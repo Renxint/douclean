@@ -1556,6 +1556,11 @@ class MainWindow(QMainWindow):
     def _do_update(self, url, remote_ver):
         """后台下载 → 解压到 _new_version → 下次启动自动替换"""
         new_dir = EXE_DIR.parent / (EXE_DIR.name + "_new")
+        if new_dir.exists():
+            _slog("update SKIP: already downloaded")
+            self.tray_notify("抖净", f"v{remote_ver} 已就绪，下次启动自动安装")
+            return
+        _slog(f"update START: url={url[:80]}, new_dir={new_dir}")
         try:
             # 清理旧残留
             import shutil as _shutil
@@ -1585,9 +1590,12 @@ class MainWindow(QMainWindow):
                         t.parent.mkdir(parents=True, exist_ok=True)
                         with z.open(m) as src, open(t, 'wb') as dst: dst.write(src.read())
             zip_path.unlink(missing_ok=True)
+            _slog(f"update DONE: {new_dir} ready, size={sum(f.stat().st_size for f in new_dir.rglob('*') if f.is_file())}")
 
             self.tray_notify("抖净", f"v{remote_ver} 已就绪，下次启动自动安装")
-        except Exception:
+        except Exception as e:
+            _slog(f"update FAILED: {e}")
+            self.tray_notify("抖净", f"更新失败: {e}", duration=5000)
             try: _shutil.rmtree(new_dir, ignore_errors=True)
             except: pass
 
@@ -1666,8 +1674,10 @@ class MainWindow(QMainWindow):
 def _startup_swap_if_needed():
     """启动时检查是否有 _new_version，有则替换当前版本"""
     new_dir = EXE_DIR.parent / (EXE_DIR.name + "_new")
+    _slog(f"swap check: EXE_DIR={EXE_DIR}, new_dir={new_dir}, exists={new_dir.exists()}")
     if not new_dir.exists():
         return
+    _slog("swap START")
     try:
         # 合并数据：复制旧版独有的文件到新版本
         for item in ["data", "output", "settings.json"]:
@@ -1692,8 +1702,13 @@ def _startup_swap_if_needed():
         if old.exists(): shutil.rmtree(old, ignore_errors=True)
         EXE_DIR.rename(old)
         new_dir.rename(EXE_DIR)
-        # 后台清理旧版
-        threading.Thread(target=lambda: (time.sleep(3), shutil.rmtree(old, ignore_errors=True)), daemon=True).start()
+        # 后台清理旧版 + 重启
+        threading.Thread(target=lambda: (time.sleep(2), shutil.rmtree(old, ignore_errors=True)), daemon=True).start()
+        # 重启到新版本
+        new_exe = EXE_DIR / "抖净.exe"
+        if new_exe.exists():
+            subprocess.Popen([str(new_exe)], cwd=str(EXE_DIR), creationflags=CREATE_NO_WINDOW if sys.platform == 'win32' else 0)
+            os._exit(0)
     except Exception:
         pass  # 替换失败，继续用旧版
 
