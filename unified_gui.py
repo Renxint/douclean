@@ -468,6 +468,10 @@ class HomepageDownloadThread(QThread):
         self.log_signal.emit("[>>] 获取作品列表...")
         all_posts, seen_ids, cursor, author_name = [], set(), 0, profile.get("nickname", "")
 
+        # 解析用户输入数量（提前，用于早停）
+        try: max_count = int(self.pending_count_text)
+        except: max_count = None
+
         for page in range(1, 50):
             if self._check_cancel():
                 self.finished_signal.emit({"video":0,"image":0,"music":0,"skip":0,"fail":0,"cancelled":True})
@@ -484,19 +488,19 @@ class HomepageDownloadThread(QThread):
                 author_name = aweme_list[0].get("author", {}).get("nickname", "")
             has_more = data.get("has_more", 0); cursor = data.get("max_cursor", 0)
             self.log_signal.emit(f"[翻页] P{page}: +{new} 累计{len(all_posts)} has_more={has_more}")
+            # 早停：达到用户设置的数量
+            if max_count and len(all_posts) >= max_count:
+                self.log_signal.emit(f"[翻页] 已达目标数量 {max_count}，停止翻页")
+                all_posts = all_posts[:max_count]
+                break
             if not has_more: break
             time.sleep(1.5)
 
         real_total = len(all_posts)
         self.total_signal.emit(real_total)
 
-        try: max_count = int(self.pending_count_text)
-        except: max_count = None
-        if max_count and max_count > real_total: max_count = real_total
-        if max_count: all_posts = all_posts[:max_count]
-
         total = len(all_posts)
-        self.log_signal.emit(f"[OK] {real_total}个作品, 下载{total}个 | 作者: {author_name}")
+        self.log_signal.emit(f"[OK] 下载{total}个 | 作者: {author_name}")
 
         safe_author = clean_name(author_name, 20) or sec_id[:8]
         out_dir = Path(self.custom_out_dir) / safe_author
