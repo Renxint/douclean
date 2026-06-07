@@ -768,8 +768,7 @@ class ModePage(QWidget):
         sl.addWidget(st)
         sd = QLabel("粘贴抖音分享链接\n下载视频 / 图集 / 实况照片"); sd.setStyleSheet("font-size:12px;color:#64748B;")
         sl.addWidget(sd); sl.addStretch()
-        shadow1 = QGraphicsDropShadowEffect(); shadow1.setBlurRadius(20); shadow1.setOffset(0,4); shadow1.setColor(QColor(0,0,0,80))
-        self.single_btn.setGraphicsEffect(shadow1)
+        # shadow removed for stability
         btn_layout.addWidget(self.single_btn)
 
         # 主页卡片
