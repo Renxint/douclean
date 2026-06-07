@@ -1,6 +1,6 @@
 {
-  "version": "1.0.2",
+  "version": "1.0.3",
   "date": "2026-06-08",
-  "url": "https://gitee.com/Renxint/douclean/releases/download/v1.0.2/抖净_v1.0.2.zip",
-  "note": "抖净 DouClean v1.0.2\n\n更新内容:\n- 主页下载智能翻页(达到数量自动停止)\n- 自动检测系统浏览器\n- 托盘双击激活+单实例\n- 反馈修复+使用手册\n- 代码优化精简至81MB"
+  "url": "https://gitee.com/Renxint/douclean/releases/download/v1.0.3/抖净_v1.0.3.zip",
+  "note": "抖净 DouClean v1.0.3\n\n更新内容:\n- 自动更新：下载→备份数据→安装→重启，数据不丢失\n- 智能翻页：达到设定数量自动停止\n- 修复证书+反馈webhook\n- 自动检测系统浏览器"
 }
