@@ -8,7 +8,7 @@
 
 ### 下载安装
 
-1. 从 [发行版](https://gitee.com/Renxint/douyin-downloader) 下载最新 `抖音下载器.zip`
+1. 从 [发行版](https://gitee.com/Renxint/douclean) 下载最新 `抖音下载器.zip`
 2. 解压到任意文件夹
 3. 双击 `抖音下载器.exe` 即可运行
 
@@ -89,7 +89,7 @@
 {
   "version": "1.0.1",
   "date": "2026-06-XX",
-  "url": "https://gitee.com/Renxint/douyin-downloader/raw/master/抖音下载器.zip",
+  "url": "https://gitee.com/Renxint/douclean/raw/master/抖音下载器.zip",
   "note": "修复xxx问题，新增xxx功能"
 }
 ```
@@ -157,4 +157,4 @@ douyin_downloader/
 
 ### Gitee 仓库
 
-https://gitee.com/Renxint/douyin-downloader
+https://gitee.com/Renxint/douclean

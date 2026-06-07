@@ -18,7 +18,7 @@ CREATE_NO_WINDOW = 0x08000000 if sys.platform == 'win32' else 0
 
 # 版本 & 反馈
 VERSION = "1.0.0"
-VERSION_URL = "https://gitee.com/Renxint/douyin-downloader/raw/master/version.json"
+VERSION_URL = "https://gitee.com/Renxint/douclean/raw/master/version.json"
 DINGTALK_WEBHOOK = "https://oapi.dingtalk.com/robot/send?access_token=140b22bf4f35c675bf36c7441a78871f4678762df788dd7079dd0f565f312ee9"
 
 
@@ -49,10 +49,10 @@ if getattr(sys, 'frozen', False):
     EXE_DIR = Path(sys.executable).parent  # exe 所在目录
 else:
     BASE_DIR = Path(__file__).resolve().parent.parent.parent  # Claude/
-    EXE_DIR = Path(__file__).resolve().parent.parent  # douyin_downloader/
+    EXE_DIR = Path(__file__).resolve().parent.parent  # douclean/
 
 PROJECT_ROOT = BASE_DIR
-PROJECT_DIR = BASE_DIR / "projects" / "douyin_downloader" if not getattr(sys, 'frozen', False) else BASE_DIR
+PROJECT_DIR = BASE_DIR / "projects" / "douclean" if not getattr(sys, 'frozen', False) else BASE_DIR
 sys.path.insert(0, str(BASE_DIR))
 
 SETTINGS_FILE = EXE_DIR / "settings.json"
