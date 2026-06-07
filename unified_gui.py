@@ -881,7 +881,7 @@ class SinglePage(QWidget):
         back.setObjectName("secondaryBtn")
         back.setCursor(Qt.CursorShape.PointingHandCursor)
         back.clicked.connect(self.back_clicked)
-        back.setFixedWidth(80)
+        back.setFixedSize(80, 36)
         top.addWidget(back)
 
         title = QLabel("单视频下载")
@@ -894,11 +894,13 @@ class SinglePage(QWidget):
         url_row = QHBoxLayout()
         self.url_input = QLineEdit()
         self.url_input.setPlaceholderText("粘贴分享链接或视频URL... 支持视频/图集/实况")
+        self.url_input.setMinimumHeight(42)
         self.url_input.returnPressed.connect(self._start)
         url_row.addWidget(self.url_input)
         self.dl_btn = QPushButton("开始下载")
         self.dl_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.dl_btn.clicked.connect(self._start)
+        self.dl_btn.setFixedHeight(42); self.dl_btn.setMinimumWidth(100)
         url_row.addWidget(self.dl_btn)
         layout.addLayout(url_row)
 
@@ -912,12 +914,14 @@ class SinglePage(QWidget):
         browse = QPushButton("浏览...")
         browse.setObjectName("secondaryBtn")
         browse.setCursor(Qt.CursorShape.PointingHandCursor)
+        browse.setFixedHeight(36)
         browse.clicked.connect(lambda: self._browse(self.path_input))
         path_row.addWidget(browse)
         layout.addLayout(path_row)
 
         # 进度
         self.progress = QProgressBar()
+        self.progress.setFixedHeight(8)
         self.progress.setVisible(False)
         layout.addWidget(self.progress)
 
@@ -1053,7 +1057,7 @@ class HomepagePage(QWidget):
         back.setObjectName("secondaryBtn")
         back.setCursor(Qt.CursorShape.PointingHandCursor)
         back.clicked.connect(self.back_clicked)
-        back.setFixedWidth(80)
+        back.setFixedSize(80, 36)
         top.addWidget(back)
 
         title = QLabel("主页批量下载")
@@ -1066,11 +1070,13 @@ class HomepagePage(QWidget):
         url_row = QHBoxLayout()
         self.url_input = QLineEdit()
         self.url_input.setPlaceholderText("https://www.douyin.com/user/MS4wLjAB...")
+        self.url_input.setMinimumHeight(42)
         self.url_input.returnPressed.connect(self._start)
         url_row.addWidget(self.url_input)
         self.dl_btn = QPushButton("开始下载")
         self.dl_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.dl_btn.clicked.connect(self._start)
+        self.dl_btn.setFixedHeight(42)
         url_row.addWidget(self.dl_btn)
         self.pause_btn = QPushButton("暂停")
         self.pause_btn.setObjectName("secondaryBtn")
@@ -1102,12 +1108,14 @@ class HomepagePage(QWidget):
         browse = QPushButton("浏览...")
         browse.setObjectName("secondaryBtn")
         browse.setCursor(Qt.CursorShape.PointingHandCursor)
+        browse.setFixedHeight(36)
         browse.clicked.connect(lambda: self._browse(self.path_input))
         ctrl.addWidget(browse)
         layout.addLayout(ctrl)
 
         # 进度
         self.progress = QProgressBar()
+        self.progress.setFixedHeight(8)
         self.progress.setVisible(False)
         layout.addWidget(self.progress)
 
