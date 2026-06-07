@@ -1545,14 +1545,37 @@ class MainWindow(QMainWindow):
                 from PyQt6.QtWidgets import QMessageBox
                 reply = QMessageBox.question(
                     self, "发现新版本",
-                    f"当前版本: v{VERSION}\n最新版本: v{remote}\n更新内容: {note}\n\n是否下载新版本?",
+                    f"当前版本: v{VERSION}\n最新版本: v{remote}\n更新内容: {note}\n\n是否下载并安装新版本?",
                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                 )
                 if reply == QMessageBox.StandardButton.Yes and url:
-                    import webbrowser
-                    webbrowser.open(url)
-        except:
+                    self._do_update(url)
+        except Exception:
             pass  # 网络不通，静默跳过
+
+    def _do_update(self, url):
+        """下载更新包 → 启动更新器 → 退出"""
+        zip_path = EXE_DIR / "_update.zip"
+        try:
+            # 下载
+            import requests as req
+            r = req.get(url, stream=True, timeout=300)
+            total = int(r.headers.get('content-length', 0))
+            downloaded = 0
+            with open(zip_path, 'wb') as f:
+                for chunk in r.iter_content(8192):
+                    f.write(chunk)
+                    downloaded += len(chunk)
+            # 启动更新器
+            updater = BASE_DIR / "updater.py"
+            if not updater.exists():
+                updater = EXE_DIR / "updater.py"
+            python = sys.executable
+            subprocess.Popen([python, str(updater), str(zip_path)],
+                           creationflags=CREATE_NO_WINDOW if sys.platform == 'win32' else 0)
+            self._real_quit()
+        except Exception:
+            pass
 
     def _go_home(self):
         self.mode_page.refresh_cookie_status()
