@@ -1754,44 +1754,47 @@ class MainWindow(QMainWindow):
 
 
 def _startup_swap_if_needed():
-    """启动时检查是否有 _new_version，有则替换当前版本"""
+    """启动时检查是否有 _new，有则写 .bat 脚本完成替换后重启"""
     new_dir = EXE_DIR.parent / (EXE_DIR.name + "_new")
     _slog(f"swap check: EXE_DIR={EXE_DIR}, new_dir={new_dir}, exists={new_dir.exists()}")
     if not new_dir.exists():
         return
-    _slog("swap START")
+    _slog("swap START (via batch script)")
     try:
-        # 合并数据：复制旧版独有的文件到新版本
+        # 合并数据到新版
         for item in ["data", "output", "settings.json"]:
-            src = EXE_DIR / item
-            dst = new_dir / item
+            src = EXE_DIR / item; dst = new_dir / item
             if not src.exists(): continue
-            if src.is_dir():
-                if not dst.exists(): shutil.copytree(src, dst)
-                else:
-                    for f in src.rglob('*'):
-                        rel = f.relative_to(src)
-                        df = dst / rel
-                        if not df.exists():
-                            df.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                if src.is_dir():
+                    if not dst.exists(): shutil.copytree(src, dst)
+                    else:
+                        for f in src.rglob('*'):
+                            rel = f.relative_to(src); df = dst / rel
+                            if not df.exists(): df.parent.mkdir(parents=True, exist_ok=True)
                             if f.is_file(): shutil.copy2(f, df)
-            else:
-                if not dst.exists():
-                    dst.parent.mkdir(parents=True, exist_ok=True)
-                    shutil.copy2(src, dst)
-        # 旧版改名 → 新版就位
-        old = EXE_DIR.with_name(EXE_DIR.name + "_old")
-        if old.exists(): shutil.rmtree(old, ignore_errors=True)
-        EXE_DIR.rename(old)
-        new_dir.rename(EXE_DIR)
-        # 后台清理旧版 + 重启
-        threading.Thread(target=lambda: (time.sleep(2), shutil.rmtree(old, ignore_errors=True)), daemon=True).start()
-        # 重启到新版本
-        new_exe = EXE_DIR / "抖净.exe"
-        if new_exe.exists():
-            subprocess.Popen([str(new_exe)], cwd=str(EXE_DIR), creationflags=CREATE_NO_WINDOW if sys.platform == 'win32' else 0)
-            os._exit(0)
+                elif not dst.exists():
+                    dst.parent.mkdir(parents=True, exist_ok=True); shutil.copy2(src, dst)
+            except Exception: pass
+
+        # 写 .bat 脚本：等待旧进程退出 → 删除旧版 → 重命名新版 → 启动 → 自删
+        bat = EXE_DIR.parent / "_swap.bat"
+        bat.write_text(
+            f'@echo off\r\n'
+            f'ping 127.0.0.1 -n 2 >nul\r\n'
+            f'rmdir /s /q "{EXE_DIR}"\r\n'
+            f'rename "{new_dir}" "{EXE_DIR.name}"\r\n'
+            f'start "" /d "{EXE_DIR}" "{EXE_DIR}\\抖净.exe"\r\n'
+            f'del "%~f0"\r\n',
+            encoding='ascii', errors='ignore'
+        )
+        subprocess.Popen(
+            ['cmd', '/c', str(bat)],
+            creationflags=CREATE_NO_WINDOW if sys.platform == 'win32' else 0,
+        )
+        os._exit(0)
     except Exception:
+        _slog(f"swap FAILED: see traceback"); import traceback; _slog(traceback.format_exc())
         pass  # 替换失败，继续用旧版
 
 
