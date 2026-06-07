@@ -1093,8 +1093,12 @@ def main():
 
     # 加载 Qt 中文翻译
     translator = QTranslator()
-    qt_translations = QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath)
-    translator.load("qt_zh_CN", qt_translations)
+    # 优先用打包内的，其次用系统路径
+    local = Path(sys._MEIPASS if getattr(sys, 'frozen', False) else BASE_DIR) / "translations" / "qt_zh_CN.qm"
+    if local.exists():
+        translator.load(str(local))
+    else:
+        translator.load("qt_zh_CN", QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath))
     app.installTranslator(translator)
 
     app.setStyle('Fusion')
