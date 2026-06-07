@@ -121,7 +121,7 @@ from PyQt6.QtWidgets import (
     QMessageBox, QInputDialog, QFrame, QMenu, QSystemTrayIcon, QScrollArea,
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTranslator, QLocale, QLibraryInfo, QTimer
-from PyQt6.QtGui import QPalette, QColor, QIcon, QFont, QAction
+from PyQt6.QtGui import QPalette, QColor, QIcon, QFont, QAction, QGraphicsDropShadowEffect
 
 import requests
 
@@ -762,12 +762,14 @@ class ModePage(QWidget):
         self.single_btn.clicked.connect(self.single_clicked)
         self.single_btn.setMinimumSize(260, 190)
         sl = QVBoxLayout(self.single_btn); sl.setContentsMargins(20,20,20,20); sl.setSpacing(8)
-        si = QLabel("1"); si.setStyleSheet("font-size:28px;font-weight:800;color:#E11D48;background:#1A1030;border-radius:12px;min-width:44px;max-width:44px;min-height:44px;max-height:44px;"); si.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        si = QLabel("⬇"); si.setStyleSheet("font-size:24px;font-weight:800;color:#E11D48;background:#1A1030;border-radius:12px;min-width:44px;max-width:44px;min-height:44px;max-height:44px;"); si.setAlignment(Qt.AlignmentFlag.AlignCenter)
         sl.addWidget(si)
         st = QLabel("单视频下载"); st.setStyleSheet("font-size:16px;font-weight:700;color:#F1F5F9;")
         sl.addWidget(st)
         sd = QLabel("粘贴抖音分享链接\n下载视频 / 图集 / 实况照片"); sd.setStyleSheet("font-size:12px;color:#64748B;")
         sl.addWidget(sd); sl.addStretch()
+        shadow1 = QGraphicsDropShadowEffect(); shadow1.setBlurRadius(20); shadow1.setOffset(0,4); shadow1.setColor(QColor(0,0,0,80))
+        self.single_btn.setGraphicsEffect(shadow1)
         btn_layout.addWidget(self.single_btn)
 
         # 主页卡片
@@ -777,12 +779,14 @@ class ModePage(QWidget):
         self.homepage_btn.clicked.connect(self.homepage_clicked)
         self.homepage_btn.setMinimumSize(260, 190)
         hl = QVBoxLayout(self.homepage_btn); hl.setContentsMargins(20,20,20,20); hl.setSpacing(8)
-        hi = QLabel("N"); hi.setStyleSheet("font-size:28px;font-weight:800;color:#E11D48;background:#1A1030;border-radius:12px;min-width:44px;max-width:44px;min-height:44px;max-height:44px;"); hi.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        hi = QLabel("☰"); hi.setStyleSheet("font-size:24px;font-weight:800;color:#E11D48;background:#1A1030;border-radius:12px;min-width:44px;max-width:44px;min-height:44px;max-height:44px;"); hi.setAlignment(Qt.AlignmentFlag.AlignCenter)
         hl.addWidget(hi)
         ht = QLabel("主页批量下载"); ht.setStyleSheet("font-size:16px;font-weight:700;color:#F1F5F9;")
         hl.addWidget(ht)
         hd = QLabel("粘贴用户主页链接\n下载全部公开作品"); hd.setStyleSheet("font-size:12px;color:#64748B;")
         hl.addWidget(hd); hl.addStretch()
+        shadow2 = QGraphicsDropShadowEffect(); shadow2.setBlurRadius(20); shadow2.setOffset(0,4); shadow2.setColor(QColor(0,0,0,80))
+        self.homepage_btn.setGraphicsEffect(shadow2)
         btn_layout.addWidget(self.homepage_btn)
 
         layout.addLayout(btn_layout)
