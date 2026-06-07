@@ -1492,8 +1492,8 @@ class MainWindow(QMainWindow):
         # 快捷键
         self._setup_shortcuts()
 
-        # 后台检查版本更新
-        threading.Thread(target=self._check_version, daemon=True).start()
+        # 启动后延迟检查版本更新（主线程，QTimer）
+        QTimer.singleShot(2000, self._check_version)
 
     def _setup_shortcuts(self):
         from PyQt6.QtGui import QShortcut, QKeySequence
