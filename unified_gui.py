@@ -1545,37 +1545,51 @@ class MainWindow(QMainWindow):
                 from PyQt6.QtWidgets import QMessageBox
                 reply = QMessageBox.question(
                     self, "发现新版本",
-                    f"当前版本: v{VERSION}\n最新版本: v{remote}\n更新内容: {note}\n\n是否下载并安装新版本?",
+                    f"当前版本: v{VERSION}\n最新版本: v{remote}\n更新内容: {note}\n\n是否后台下载? (下次启动时自动安装)",
                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                 )
                 if reply == QMessageBox.StandardButton.Yes and url:
-                    self._do_update(url)
+                    threading.Thread(target=self._do_update, args=(url, remote), daemon=True).start()
         except Exception:
             pass  # 网络不通，静默跳过
 
-    def _do_update(self, url):
-        """下载更新包 → 启动更新器 → 退出"""
-        zip_path = EXE_DIR / "_update.zip"
+    def _do_update(self, url, remote_ver):
+        """后台下载 → 解压到 _new_version → 下次启动自动替换"""
+        new_dir = EXE_DIR.parent / (EXE_DIR.name + "_new")
         try:
+            # 清理旧残留
+            import shutil as _shutil
+            if new_dir.exists():
+                _shutil.rmtree(new_dir, ignore_errors=True)
+            new_dir.mkdir(parents=True, exist_ok=True)
+
             # 下载
             import requests as req
-            r = req.get(url, stream=True, timeout=300)
+            r = req.get(url, stream=True, timeout=600)
             total = int(r.headers.get('content-length', 0))
-            downloaded = 0
+            zip_path = new_dir.parent / "_update_dl.zip"
+            dl = 0
             with open(zip_path, 'wb') as f:
                 for chunk in r.iter_content(8192):
-                    f.write(chunk)
-                    downloaded += len(chunk)
-            # 启动更新器
-            updater = BASE_DIR / "updater.py"
-            if not updater.exists():
-                updater = EXE_DIR / "updater.py"
-            python = sys.executable
-            subprocess.Popen([python, str(updater), str(zip_path)],
-                           creationflags=CREATE_NO_WINDOW if sys.platform == 'win32' else 0)
-            self._real_quit()
+                    f.write(chunk); dl += len(chunk)
+
+            # 解压到 _new_version
+            import zipfile
+            with zipfile.ZipFile(zip_path, 'r') as z:
+                for m in z.namelist():
+                    parts = m.split('/', 1)
+                    if len(parts) < 2: continue
+                    t = new_dir / parts[1]
+                    if m.endswith('/'): t.mkdir(parents=True, exist_ok=True)
+                    else:
+                        t.parent.mkdir(parents=True, exist_ok=True)
+                        with z.open(m) as src, open(t, 'wb') as dst: dst.write(src.read())
+            zip_path.unlink(missing_ok=True)
+
+            self.tray_notify("抖净", f"v{remote_ver} 已就绪，下次启动自动安装")
         except Exception:
-            pass
+            try: _shutil.rmtree(new_dir, ignore_errors=True)
+            except: pass
 
     def _go_home(self):
         self.mode_page.refresh_cookie_status()
@@ -1649,8 +1663,46 @@ class MainWindow(QMainWindow):
             self._tray.showMessage(title, msg, icon, duration)
 
 
+def _startup_swap_if_needed():
+    """启动时检查是否有 _new_version，有则替换当前版本"""
+    new_dir = EXE_DIR.parent / (EXE_DIR.name + "_new")
+    if not new_dir.exists():
+        return
+    try:
+        # 合并数据：复制旧版独有的文件到新版本
+        for item in ["data", "output", "settings.json"]:
+            src = EXE_DIR / item
+            dst = new_dir / item
+            if not src.exists(): continue
+            if src.is_dir():
+                if not dst.exists(): shutil.copytree(src, dst)
+                else:
+                    for f in src.rglob('*'):
+                        rel = f.relative_to(src)
+                        df = dst / rel
+                        if not df.exists():
+                            df.parent.mkdir(parents=True, exist_ok=True)
+                            if f.is_file(): shutil.copy2(f, df)
+            else:
+                if not dst.exists():
+                    dst.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(src, dst)
+        # 旧版改名 → 新版就位
+        old = EXE_DIR.with_name(EXE_DIR.name + "_old")
+        if old.exists(): shutil.rmtree(old, ignore_errors=True)
+        EXE_DIR.rename(old)
+        new_dir.rename(EXE_DIR)
+        # 后台清理旧版
+        threading.Thread(target=lambda: (time.sleep(3), shutil.rmtree(old, ignore_errors=True)), daemon=True).start()
+    except Exception:
+        pass  # 替换失败，继续用旧版
+
+
 def main():
     global _instance_socket
+    # 启动前：检测更新并替换
+    _startup_swap_if_needed()
+
     # 单实例检测（socket 端口占用 + 双开激活旧窗口）
     _instance_socket = setup_single_instance()
     if _instance_socket is None:
