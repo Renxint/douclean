@@ -157,19 +157,34 @@ from PyQt6.QtNetwork import QLocalServer, QLocalSocket
 _instance_socket = None  # 全局持有 QLocalServer 引用
 
 
+def _slog(msg):
+    """单实例调试日志"""
+    try:
+        with open(EXE_DIR / "_instance.log", "a", encoding="utf-8") as f:
+            f.write(f"[{time.strftime('%H:%M:%S')}] PID={os.getpid()} {msg}\n")
+    except: pass
+
+
 def setup_single_instance():
     """单实例检测 + 已运行则通知旧窗口激活 (Qt LocalServer)"""
+    _slog("setup_single_instance START")
     server = QLocalServer()
-    server.listen("DouClean_Instance")
-    if server.isListening():
-        return server  # 首个实例
+    ok = server.listen("DouClean_Instance")
+    _slog(f"listen result: {ok}, error: {server.errorString()}")
+    if ok:
+        _slog("FIRST instance - returning server")
+        return server
     # 已有实例 → 通知激活
+    _slog("Second instance detected - sending show signal")
     sock = QLocalSocket()
     sock.connectToServer("DouClean_Instance")
-    if sock.waitForConnected(500):
+    if sock.waitForConnected(1000):
         sock.write(b'show')
         sock.waitForBytesWritten(500)
-        sock.close()
+        _slog("show signal sent OK")
+    else:
+        _slog(f"connect failed: {sock.errorString()}")
+    sock.close()
     return None
 
 
@@ -1495,12 +1510,15 @@ class MainWindow(QMainWindow):
 
     def _on_second_instance(self):
         """第二个实例发来激活信号"""
+        _slog("_on_second_instance triggered!")
         conn = self._instance_srv.nextPendingConnection()
         if conn:
             conn.waitForReadyRead(500)
             data = bytes(conn.readAll())
+            _slog(f"received data: {data}")
             conn.close()
             if data == b'show':
+                _slog("calling _show_from_tray")
                 self._show_from_tray()
 
     def _setup_shortcuts(self):
