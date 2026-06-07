@@ -63,7 +63,7 @@ from PyQt6.QtWidgets import (
     QStackedWidget, QComboBox, QListWidget, QListWidgetItem, QSplitter,
     QMessageBox, QInputDialog, QFrame,
 )
-from PyQt6.QtCore import Qt, QThread, pyqtSignal
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTranslator, QLocale, QLibraryInfo
 from PyQt6.QtGui import QPalette, QColor, QIcon, QFont
 
 import requests
@@ -1090,6 +1090,13 @@ class MainWindow(QMainWindow):
 
 def main():
     app = QApplication(sys.argv)
+
+    # 加载 Qt 中文翻译
+    translator = QTranslator()
+    qt_translations = QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath)
+    translator.load("qt_zh_CN", qt_translations)
+    app.installTranslator(translator)
+
     app.setStyle('Fusion')
     palette = QPalette()
     palette.setColor(QPalette.ColorRole.Window, QColor(26, 26, 46))
