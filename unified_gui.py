@@ -1779,15 +1779,17 @@ def _startup_swap_if_needed():
 
         # 写 .bat 脚本：等待旧进程退出 → 删除旧版 → 重命名新版 → 启动 → 自删
         bat = EXE_DIR.parent / "_swap.bat"
-        bat.write_text(
+        exe_name = "抖净.exe"
+        bat_content = (
             f'@echo off\r\n'
+            f'chcp 65001 >nul\r\n'
             f'ping 127.0.0.1 -n 2 >nul\r\n'
             f'rmdir /s /q "{EXE_DIR}"\r\n'
-            f'rename "{new_dir}" "{EXE_DIR.name}"\r\n'
-            f'start "" /d "{EXE_DIR}" "{EXE_DIR}\\抖净.exe"\r\n'
-            f'del "%~f0"\r\n',
-            encoding='ascii', errors='ignore'
+            f'move "{new_dir}" "{EXE_DIR}"\r\n'
+            f'start "" "{EXE_DIR}\\\\{exe_name}"\r\n'
+            f'del "%~f0"\r\n'
         )
+        bat.write_text(bat_content, encoding='utf-8')
         subprocess.Popen(
             ['cmd', '/c', str(bat)],
             creationflags=CREATE_NO_WINDOW if sys.platform == 'win32' else 0,
