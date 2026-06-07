@@ -152,9 +152,34 @@ import requests
 # ============================================================
 # 全局：单实例 + 异常钩子
 # ============================================================
+import socket
+_instance_port = 19998
+
+
+_instance_socket = None  # 全局持有，MainWindow 用 QTimer 监听
+
+
 def setup_single_instance():
-    """单实例检测（暂时关闭，避免锁文件问题）"""
-    return True
+    """单实例检测 + 已运行则通知旧窗口激活"""
+    try:
+        # 尝试绑定端口 → 首个实例
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        s.bind(('127.0.0.1', _instance_port))
+        s.listen(1)
+        s.setblocking(False)
+        return s  # 返回 socket，进程持有端口
+    except OSError:
+        # 端口被占用 → 已有实例，通知它激活窗口
+        try:
+            c = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            c.settimeout(1)
+            c.connect(('127.0.0.1', _instance_port))
+            c.sendall(b'show')
+            c.close()
+        except Exception:
+            pass
+        return None
 
 
 def global_exception_handler(exc_type, exc_value, exc_tb):
@@ -1469,8 +1494,28 @@ class MainWindow(QMainWindow):
         # 快捷键
         self._setup_shortcuts()
 
+        # socket 监听：收到双开通知时弹窗
+        if _instance_socket:
+            self._instance_socket = _instance_socket
+            self._instance_timer = QTimer()
+            self._instance_timer.timeout.connect(self._check_instance)
+            self._instance_timer.start(500)
+
         # 启动后延迟检查版本更新（主线程，QTimer）
         QTimer.singleShot(2000, self._check_version)
+
+    def _check_instance(self):
+        """检查是否有第二个实例发来的激活信号"""
+        try:
+            conn, _ = self._instance_socket.accept()
+            data = conn.recv(4)
+            conn.close()
+            if data == b'show':
+                self._show_from_tray()
+        except BlockingIOError:
+            pass
+        except Exception:
+            pass
 
     def _setup_shortcuts(self):
         from PyQt6.QtGui import QShortcut, QKeySequence
@@ -1562,6 +1607,12 @@ class MainWindow(QMainWindow):
         except: pass
         if self._tray:
             self._tray.hide()
+        # 释放单实例 socket
+        try:
+            if _instance_socket:
+                _instance_socket.close()
+        except Exception:
+            pass
         QApplication.quit()
 
     def tray_notify(self, title, msg, icon=QSystemTrayIcon.MessageIcon.Information, duration=3000):
@@ -1571,10 +1622,11 @@ class MainWindow(QMainWindow):
 
 
 def main():
-    # 单实例检测（用本地 socket 端口占用）
+    global _instance_socket
+    # 单实例检测（socket 端口占用 + 双开激活旧窗口）
     _instance_socket = setup_single_instance()
     if _instance_socket is None:
-        QMessageBox.information(None, "抖净", "抖净已在运行中，请查看系统托盘。")
+        # 已通知旧窗口激活，退出
         return
 
     app = QApplication(sys.argv)
