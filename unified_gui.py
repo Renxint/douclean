@@ -16,6 +16,39 @@ from pathlib import Path
 # Windows 隐藏子进程窗口
 CREATE_NO_WINDOW = 0x08000000 if sys.platform == 'win32' else 0
 
+# 线程安全锁（保护共享文件读写）
+_file_lock = threading.Lock()
+
+
+def safe_read(path: Path) -> str:
+    """线程安全读文件"""
+    with _file_lock:
+        if path.exists():
+            return path.read_text(encoding='utf-8').strip()
+    return ""
+
+
+def safe_write(path: Path, content: str):
+    """线程安全写文件（先写临时文件再原子替换）"""
+    with _file_lock:
+        tmp = path.with_suffix(path.suffix + '.tmp')
+        tmp.write_text(content, encoding='utf-8')
+        tmp.replace(path)
+
+
+def safe_read_json(path: Path, default=None):
+    """线程安全读 JSON"""
+    try:
+        raw = safe_read(path)
+        return json.loads(raw) if raw else (default or {})
+    except:
+        return default or {}
+
+
+def safe_write_json(path: Path, data: dict):
+    """线程安全写 JSON"""
+    safe_write(path, json.dumps(data, ensure_ascii=False, indent=2))
+
 # 版本 & 反馈
 VERSION = "1.0.0"
 VERSION_URL = "https://gitee.com/Renxint/douclean/raw/master/version.json"
@@ -25,8 +58,8 @@ DINGTALK_WEBHOOK = "https://oapi.dingtalk.com/robot/send?access_token=140b22bf4f
 def load_font():
     """加载用户保存的字体设置"""
     try:
-        if SETTINGS_FILE.exists():
-            data = json.loads(SETTINGS_FILE.read_text(encoding='utf-8'))
+        data = safe_read_json(SETTINGS_FILE)
+        if data:
             f = QFont(data.get("family", ""))
             if data.get("size"): f.setPointSize(data["size"])
             return f
@@ -37,12 +70,10 @@ def load_font():
 def save_font(font):
     """保存字体设置（合并写入，不覆盖其他设置）"""
     try:
-        data = {}
-        if SETTINGS_FILE.exists():
-            data = json.loads(SETTINGS_FILE.read_text(encoding='utf-8'))
+        data = safe_read_json(SETTINGS_FILE)
         data["family"] = font.family()
         data["size"] = font.pointSize()
-        SETTINGS_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
+        safe_write_json(SETTINGS_FILE, data)
     except: pass
 
 
@@ -74,20 +105,13 @@ def choose_font_dialog(parent, current_font=None):
 
 
 def load_setting(key, default=None):
-    try:
-        if SETTINGS_FILE.exists():
-            return json.loads(SETTINGS_FILE.read_text(encoding='utf-8')).get(key, default)
-    except: pass
-    return default
+    return safe_read_json(SETTINGS_FILE).get(key, default)
 
 
 def save_setting(key, value):
-    try:
-        data = {}
-        if SETTINGS_FILE.exists(): data = json.loads(SETTINGS_FILE.read_text(encoding='utf-8'))
-        data[key] = value
-        SETTINGS_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
-    except: pass
+    data = safe_read_json(SETTINGS_FILE)
+    data[key] = value
+    safe_write_json(SETTINGS_FILE, data)
 
 
 def get_single_download_path():
@@ -147,24 +171,13 @@ def global_exception_handler(exc_type, exc_value, exc_tb):
 
 
 def load_window_geometry():
-    """加载保存的窗口几何信息"""
-    try:
-        if SETTINGS_FILE.exists():
-            data = json.loads(SETTINGS_FILE.read_text(encoding='utf-8'))
-            return data.get("geometry")
-    except: pass
-    return None
+    return safe_read_json(SETTINGS_FILE).get("geometry")
 
 
 def save_window_geometry(geometry):
-    """保存窗口几何信息"""
-    try:
-        data = {}
-        if SETTINGS_FILE.exists():
-            data = json.loads(SETTINGS_FILE.read_text(encoding='utf-8'))
-        data["geometry"] = geometry
-        SETTINGS_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
-    except: pass
+    data = safe_read_json(SETTINGS_FILE)
+    data["geometry"] = geometry
+    safe_write_json(SETTINGS_FILE, data)
 
 
 def colored_log(msg):
