@@ -487,68 +487,106 @@ class HomepageDownloadThread(QThread):
 # 样式
 # ============================================================
 STYLE = """
-QMainWindow, QWidget { background-color: #1a1a2e; color: #e0e0e0; }
+QMainWindow, QWidget { background-color: #0A0A14; color: #F1F5F9; }
 QLineEdit {
-    background-color: #16213e; color: #e0e0e0;
-    border: 1px solid #0f3460; border-radius: 6px;
+    background-color: #12122A; color: #F1F5F9;
+    border: 1px solid #252550; border-radius: 8px;
     padding: 8px 12px; font-size: 14px;
 }
-QLineEdit:focus { border: 1px solid #e94560; }
+QLineEdit:focus { border: 1px solid #E11D48; background: #161632; }
+QLineEdit:disabled { background: #0E0E1E; color: #475569; border-color: #1A1A30; }
 QPushButton {
-    background-color: #e94560; color: white;
-    border: none; border-radius: 6px; padding: 8px 20px;
+    background-color: #E11D48; color: white;
+    border: none; border-radius: 8px; padding: 8px 20px;
     font-size: 14px; font-weight: bold;
 }
-QPushButton:hover { background-color: #ff6b81; }
-QPushButton#secondaryBtn { background-color: #0f3460; }
-QPushButton#secondaryBtn:hover { background-color: #1a4a7a; }
+QPushButton:hover { background-color: #FF3566; }
+QPushButton:pressed { background: #C0183D; }
+QPushButton#secondaryBtn { background-color: #18183A; border: 1px solid #252550; }
+QPushButton#secondaryBtn:hover { background-color: #1E1E48; }
+QPushButton#secondaryBtn:pressed { background: #12122A; }
 QPushButton#modeBtn {
-    background-color: #16213e; color: #e0e0e0;
-    border: 2px solid #e94560; border-radius: 12px;
-    padding: 40px; font-size: 18px;
+    background-color: #12122A; color: #F1F5F9;
+    border: 2px solid #252550; border-radius: 16px;
+    padding: 32px; font-size: 16px; text-align: left;
 }
-QPushButton#modeBtn:hover { background-color: #0f3460; border-color: #ff6b81; }
-QPushButton:disabled { background-color: #333; color: #666; }
+QPushButton#modeBtn:hover { background-color: #18183A; border-color: #E11D48; }
+QPushButton#modeBtn:pressed { background: #0E0E22; border-color: #C0183D; }
+QPushButton#ghostBtn { background: transparent; color: #94A3B8; border: 1px solid transparent; font-weight: normal; }
+QPushButton#ghostBtn:hover { background: #18183A; color: #F1F5F9; border-color: #252550; }
+QPushButton:disabled { background: #1A1A2E; color: #475569; border-color: #1A1A2E; }
 QTextEdit {
-    background-color: #0d1117; color: #8b949e;
-    border: 1px solid #0f3460; border-radius: 6px; padding: 6px;
+    background-color: #0B0B1A; color: #94A3B8;
+    border: 1px solid #252550; border-radius: 8px; padding: 6px;
     font-family: 'Consolas', 'Courier New', monospace; font-size: 12px;
 }
 QProgressBar {
-    background-color: #16213e; border: 1px solid #0f3460;
-    border-radius: 4px; height: 10px; text-align: center;
+    background-color: #12122A; border: 1px solid #252550;
+    border-radius: 4px; height: 8px; text-align: center;
 }
-QProgressBar::chunk { background-color: #e94560; border-radius: 3px; }
-QLabel { color: #8b949e; font-size: 13px; }
+QProgressBar::chunk { background-color: #E11D48; border-radius: 3px; }
+QLabel { color: #94A3B8; font-size: 13px; }
 QComboBox {
-    background-color: #16213e; color: #e0e0e0;
-    border: 1px solid #0f3460; border-radius: 6px;
+    background-color: #12122A; color: #F1F5F9;
+    border: 1px solid #252550; border-radius: 8px;
     padding: 6px 12px; font-size: 13px; min-width: 90px;
 }
-QComboBox:hover { border: 1px solid #e94560; }
-QComboBox QAbstractItemView {
-    background-color: #16213e; color: #e0e0e0;
-    border: 1px solid #0f3460; selection-background-color: #e94560;
-}
+QComboBox:hover { border: 1px solid #E11D48; }
+QComboBox::drop-down { border: none; width: 24px; }
+QComboBox::down-arrow { image: none; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 6px solid #94A3B8; margin-right: 6px; }
+QComboBox QAbstractItemView { background: #12122A; color: #F1F5F9; border: 1px solid #252550; selection-background: #E11D48; outline: none; padding: 4px; }
 QListWidget {
-    background-color: #16213e; border: 1px solid #0f3460;
-    border-radius: 6px; padding: 4px; font-size: 13px; outline: none;
+    background-color: #12122A; border: 1px solid #252550;
+    border-radius: 8px; padding: 4px; font-size: 13px; outline: none;
 }
-QListWidget::item:selected { background-color: #e94560; }
-QListWidget::item:hover { background-color: #0f3460; }
-QListWidget::item { padding: 6px 8px; border-radius: 4px; }
-QSplitter::handle { background-color: #0f3460; width: 1px; }
+QListWidget::item { padding: 10px 12px; border-radius: 6px; margin: 1px 0; }
+QListWidget::item:selected { background: #E11D48; color: #FFFFFF; }
+QListWidget::item:hover { background: #18183A; }
+QSplitter::handle { background-color: #1E1E48; width: 2px; }
+QScrollBar:vertical { background: #0A0A14; width: 8px; border-radius: 4px; margin: 0; }
+QScrollBar::handle:vertical { background: #334155; border-radius: 4px; min-height: 30px; }
+QScrollBar::handle:vertical:hover { background: #475569; }
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
+QScrollBar:horizontal { background: #0A0A14; height: 8px; }
+QScrollBar::handle:horizontal { background: #334155; border-radius: 4px; min-width: 30px; }
+QScrollBar::handle:horizontal:hover { background: #475569; }
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal { width: 0; }
+QMenu { background: #12122A; color: #F1F5F9; border: 1px solid #252550; border-radius: 8px; padding: 4px; }
+QMenu::item { padding: 8px 32px 8px 16px; border-radius: 4px; }
+QMenu::item:selected { background: #E11D48; }
+QToolTip { background: #1A1A3E; color: #F1F5F9; border: 1px solid #252550; border-radius: 6px; padding: 8px 12px; font-size: 12px; }
+QMessageBox { background: #0A0A14; }
+QMessageBox QLabel { color: #F1F5F9; font-size: 14px; }
+QMessageBox QPushButton { min-width: 80px; padding: 8px 16px; }
 """
+
+
+
+
+
+def get_cookie_status() -> dict:
+    if not COOKIE_FILE.exists():
+        return {"ok": False, "length": 0, "mtime": None}
+    try:
+        cookie = COOKIE_FILE.read_text(encoding="utf-8").strip()
+        mtime = COOKIE_FILE.stat().st_mtime
+        return {
+            "ok": bool(cookie) and "sessionid=" in cookie and "ttwid=" in cookie,
+            "length": len(cookie),
+            "mtime": mtime,
+        }
+    except:
+        return {"ok": False, "length": 0, "mtime": None}
 
 
 # ============================================================
 # 页面1: 模式选择
-# ============================================================
 class ModePage(QWidget):
     """首页：选择单视频 或 主页批量"""
     single_clicked = pyqtSignal()
     homepage_clicked = pyqtSignal()
     font_changed = pyqtSignal(QFont)
+    cookie_updated = pyqtSignal()
 
     def __init__(self):
         super().__init__()
@@ -556,15 +594,24 @@ class ModePage(QWidget):
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.setSpacing(30)
 
-        title = QLabel("抖净 DouClean")
-        title.setStyleSheet("font-size: 28px; font-weight: bold; color: #e94560;")
+        title = QLabel("DouClean")
+        title.setStyleSheet("font-size: 32px; font-weight: 800; color: #F1F5F9;")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
 
-        sub = QLabel("选择下载模式")
-        sub.setStyleSheet("font-size: 14px; color: #8b949e;")
+        sub = QLabel("抖净 · 抖音无水印下载工具")
+        sub.setStyleSheet("font-size: 14px; color: #64748B;")
         sub.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(sub)
+
+        sep = QFrame()
+        sep.setObjectName("separator")
+        sep.setFrameShape(QFrame.Shape.HLine)
+        sep.setFixedWidth(320)
+        sep_layout = QHBoxLayout()
+        sep_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        sep_layout.addWidget(sep)
+        layout.addLayout(sep_layout)
 
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(40)
@@ -604,10 +651,12 @@ class ModePage(QWidget):
         bottom_layout.addWidget(self.feedback_btn)
         layout.addLayout(bottom_layout)
 
-        status = QLabel(f"Cookie 自动管理 | 过期弹窗更新 | v{VERSION}")
-        status.setStyleSheet("color: #555; font-size: 11px;")
+        status = self._cookie_status = QLabel()
+        status.setStyleSheet("color: #64748B; font-size: 11px; padding: 4px 0;")
         status.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(status)
+        self._cookie_status.mousePressEvent = lambda e: self._set_cookie()
+        self.refresh_cookie_status()
+        layout.addWidget(self._cookie_status)
 
     def _choose_font(self):
         from PyQt6.QtWidgets import QDialog, QFontComboBox, QSpinBox, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QDialogButtonBox
@@ -695,6 +744,29 @@ class ModePage(QWidget):
         except Exception as e:
             QMessageBox.warning(self, "发送失败", str(e))
 
+    def refresh_cookie_status(self):
+        cs = get_cookie_status()
+        if cs["ok"]:
+            dot, txt = "#22C55E", "Cookie 已就绪"
+        elif cs["length"] > 0:
+            dot, txt = "#F59E0B", "Cookie 可能无效"
+        else:
+            dot, txt = "#EF4444", "Cookie 未设置"
+        time_str = time.strftime("%m-%d %H:%M", time.localtime(cs["mtime"])) if cs["mtime"] else ""
+        self._cookie_status.setText(f"● {txt} ({cs['length']}字符)  {time_str}    [点击更新]")
+        self._cookie_status.setStyleSheet(f"color: {dot}; font-size: 11px; padding: 4px 0;")
+        self._cookie_status.setCursor(Qt.CursorShape.PointingHandCursor)
+
+    def _set_cookie(self, event=None):
+        from PyQt6.QtWidgets import QInputDialog
+        current = COOKIE_FILE.read_text(encoding="utf-8").strip() if COOKIE_FILE.exists() else ""
+        new, ok = QInputDialog.getMultiLineText(self, "设置 Cookie", "请粘贴抖音登录后的 Cookie：", current)
+        if ok and new.strip():
+            COOKIE_FILE.parent.mkdir(parents=True, exist_ok=True)
+            COOKIE_FILE.write_text(new.strip(), encoding="utf-8")
+            self.refresh_cookie_status()
+            self.cookie_updated.emit()
+
 
 # ============================================================
 # 页面2: 单视频下载
@@ -714,7 +786,7 @@ class SinglePage(QWidget):
 
         # 顶栏
         top = QHBoxLayout()
-        back = QPushButton("← 返回")
+        back = QPushButton("  < 返回")
         back.setObjectName("secondaryBtn")
         back.setCursor(Qt.CursorShape.PointingHandCursor)
         back.clicked.connect(self.back_clicked)
@@ -722,7 +794,7 @@ class SinglePage(QWidget):
         top.addWidget(back)
 
         title = QLabel("单视频下载")
-        title.setStyleSheet("font-size: 20px; font-weight: bold; color: #e94560;")
+        title.setStyleSheet("font-size: 20px; font-weight: bold; color: #E11D48;")
         top.addWidget(title)
         top.addStretch()
         layout.addLayout(top)
@@ -733,7 +805,7 @@ class SinglePage(QWidget):
         self.url_input.setPlaceholderText("粘贴分享链接或视频URL... 支持视频/图集/实况")
         self.url_input.returnPressed.connect(self._start)
         url_row.addWidget(self.url_input)
-        self.dl_btn = QPushButton("下载")
+        self.dl_btn = QPushButton("开始下载")
         self.dl_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.dl_btn.clicked.connect(self._start)
         url_row.addWidget(self.dl_btn)
@@ -742,11 +814,11 @@ class SinglePage(QWidget):
         # 路径
         path_row = QHBoxLayout()
         path_row.setSpacing(10)
-        path_row.addWidget(QLabel("保存路径"))
+        path_row.addWidget(QLabel("保存到"))
         self.path_input = QLineEdit()
         self.path_input.setText(str(OUTPUT_SINGLE))
         path_row.addWidget(self.path_input)
-        browse = QPushButton("浏览")
+        browse = QPushButton("浏览...")
         browse.setObjectName("secondaryBtn")
         browse.setCursor(Qt.CursorShape.PointingHandCursor)
         browse.clicked.connect(lambda: self._browse(self.path_input))
@@ -763,7 +835,7 @@ class SinglePage(QWidget):
         left = QWidget()
         ll = QVBoxLayout(left)
         ll.setContentsMargins(0,0,0,0)
-        ll.addWidget(QLabel("日志"))
+        ll.addWidget(QLabel("下载日志"))
         self.log_view = QTextEdit()
         self.log_view.setReadOnly(True)
         ll.addWidget(self.log_view)
@@ -786,12 +858,12 @@ class SinglePage(QWidget):
         refresh_btn.clicked.connect(self._refresh_downloaded)
         rl.addWidget(refresh_btn)
         splitter.addWidget(right)
-        splitter.setSizes([500, 250])
+        splitter.setSizes([480, 240])
         layout.addWidget(splitter, 1)
 
         # 状态
         self.status = QLabel("就绪")
-        self.status.setStyleSheet("color: #555; font-size: 11px;")
+        self.status.setStyleSheet("color: #64748B; font-size: 11px; padding: 4px 0;")
         layout.addWidget(self.status)
 
         self._refresh_downloaded()
@@ -868,7 +940,7 @@ class HomepagePage(QWidget):
 
         # 顶栏
         top = QHBoxLayout()
-        back = QPushButton("← 返回")
+        back = QPushButton("  < 返回")
         back.setObjectName("secondaryBtn")
         back.setCursor(Qt.CursorShape.PointingHandCursor)
         back.clicked.connect(self.back_clicked)
@@ -876,7 +948,7 @@ class HomepagePage(QWidget):
         top.addWidget(back)
 
         title = QLabel("主页批量下载")
-        title.setStyleSheet("font-size: 20px; font-weight: bold; color: #e94560;")
+        title.setStyleSheet("font-size: 20px; font-weight: bold; color: #E11D48;")
         top.addWidget(title)
         top.addStretch()
         layout.addLayout(top)
@@ -887,7 +959,7 @@ class HomepagePage(QWidget):
         self.url_input.setPlaceholderText("https://www.douyin.com/user/MS4wLjAB...")
         self.url_input.returnPressed.connect(self._start)
         url_row.addWidget(self.url_input)
-        self.dl_btn = QPushButton("下载")
+        self.dl_btn = QPushButton("开始下载")
         self.dl_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.dl_btn.clicked.connect(self._start)
         url_row.addWidget(self.dl_btn)
@@ -914,11 +986,11 @@ class HomepagePage(QWidget):
         self.count_combo.setEditable(True)
         ctrl.addWidget(self.count_combo)
         ctrl.addSpacing(20)
-        ctrl.addWidget(QLabel("保存路径"))
+        ctrl.addWidget(QLabel("保存到"))
         self.path_input = QLineEdit()
         self.path_input.setText(str(OUTPUT_HOMEPAGE))
         ctrl.addWidget(self.path_input)
-        browse = QPushButton("浏览")
+        browse = QPushButton("浏览...")
         browse.setObjectName("secondaryBtn")
         browse.setCursor(Qt.CursorShape.PointingHandCursor)
         browse.clicked.connect(lambda: self._browse(self.path_input))
@@ -935,7 +1007,7 @@ class HomepagePage(QWidget):
         left = QWidget()
         ll = QVBoxLayout(left)
         ll.setContentsMargins(0,0,0,0)
-        ll.addWidget(QLabel("日志"))
+        ll.addWidget(QLabel("下载日志"))
         self.log_view = QTextEdit()
         self.log_view.setReadOnly(True)
         ll.addWidget(self.log_view)
@@ -963,7 +1035,7 @@ class HomepagePage(QWidget):
 
         # 状态
         self.status = QLabel("就绪")
-        self.status.setStyleSheet("color: #555; font-size: 11px;")
+        self.status.setStyleSheet("color: #64748B; font-size: 11px; padding: 4px 0;")
         layout.addWidget(self.status)
 
         self._refresh_users()
@@ -1100,8 +1172,8 @@ class MainWindow(QMainWindow):
 
         self.mode_page.single_clicked.connect(lambda: self.stack.setCurrentIndex(1))
         self.mode_page.homepage_clicked.connect(lambda: self.stack.setCurrentIndex(2))
-        self.single_page.back_clicked.connect(lambda: self.stack.setCurrentIndex(0))
-        self.homepage_page.back_clicked.connect(lambda: self.stack.setCurrentIndex(0))
+        self.single_page.back_clicked.connect(lambda: self._go_home())
+        self.homepage_page.back_clicked.connect(lambda: self._go_home())
         self.mode_page.font_changed.connect(self._apply_font)
 
         # 加载保存的字体
@@ -1109,7 +1181,11 @@ class MainWindow(QMainWindow):
         if saved:
             QApplication.instance().setFont(saved)
 
+        self.mode_page.cookie_updated.connect(self._on_cookie_updated)
         self.stack.setCurrentIndex(0)
+
+        self.resize(820, 640)
+        self.setMinimumSize(640, 480)
 
         # 后台检查版本更新
         threading.Thread(target=self._check_version, daemon=True).start()
@@ -1137,6 +1213,13 @@ class MainWindow(QMainWindow):
         except:
             pass  # 网络不通，静默跳过
 
+    def _go_home(self):
+        self.mode_page.refresh_cookie_status()
+        self.stack.setCurrentIndex(0)
+
+    def _on_cookie_updated(self):
+        pass
+
 
 def main():
     app = QApplication(sys.argv)
@@ -1155,7 +1238,7 @@ def main():
 
     app.setStyle('Fusion')
     palette = QPalette()
-    palette.setColor(QPalette.ColorRole.Window, QColor(26, 26, 46))
+    palette.setColor(QPalette.ColorRole.Window, QColor(10, 10, 20))
     palette.setColor(QPalette.ColorRole.WindowText, QColor(224, 224, 224))
     palette.setColor(QPalette.ColorRole.Base, QColor(22, 33, 62))
     palette.setColor(QPalette.ColorRole.Text, QColor(224, 224, 224))
