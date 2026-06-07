@@ -35,13 +35,68 @@ def load_font():
 
 
 def save_font(font):
-    """保存字体设置"""
+    """保存字体设置（合并写入，不覆盖其他设置）"""
     try:
-        SETTINGS_FILE.write_text(
-            json.dumps({"family": font.family(), "size": font.pointSize()}, ensure_ascii=False),
-            encoding='utf-8'
-        )
+        data = {}
+        if SETTINGS_FILE.exists():
+            data = json.loads(SETTINGS_FILE.read_text(encoding='utf-8'))
+        data["family"] = font.family()
+        data["size"] = font.pointSize()
+        SETTINGS_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
     except: pass
+
+
+def choose_font_dialog(parent, current_font=None):
+    """显示字体选择对话框，返回 (accepted, font)"""
+    from PyQt6.QtWidgets import QDialog, QFontComboBox, QSpinBox, QLabel, QVBoxLayout, QHBoxLayout, QDialogButtonBox
+    dlg = QDialog(parent)
+    dlg.setWindowTitle("字体设置"); dlg.resize(400, 150)
+    dlg.setStyleSheet("QDialog { background: #0A0A14; } QLabel { color: #F1F5F9; }")
+    layout = QVBoxLayout(dlg)
+    r1 = QHBoxLayout(); r1.addWidget(QLabel("字体:"))
+    combo = QFontComboBox(); combo.setEditable(False); r1.addWidget(combo, 1); layout.addLayout(r1)
+    r2 = QHBoxLayout(); r2.addWidget(QLabel("字号:"))
+    spin = QSpinBox(); spin.setRange(8, 48); spin.setValue(10); r2.addWidget(spin); r2.addStretch(); layout.addLayout(r2)
+    preview = QLabel("预览效果 ABC 中文"); preview.setMinimumHeight(40)
+    preview.setStyleSheet("border: 1px solid #252550; border-radius: 8px; padding: 8px; background: #12122A;")
+    layout.addWidget(preview)
+    if current_font is None: current_font = parent.font()
+    combo.setCurrentFont(current_font); spin.setValue(current_font.pointSize())
+    def on_change():
+        f = combo.currentFont(); f.setPointSize(spin.value()); preview.setFont(f)
+    combo.currentFontChanged.connect(on_change); spin.valueChanged.connect(on_change); on_change()
+    btns = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+    btns.accepted.connect(dlg.accept); btns.rejected.connect(dlg.reject); layout.addWidget(btns)
+    if dlg.exec() == QDialog.DialogCode.Accepted:
+        font = combo.currentFont(); font.setPointSize(spin.value())
+        return (True, font)
+    return (False, None)
+
+
+def load_setting(key, default=None):
+    try:
+        if SETTINGS_FILE.exists():
+            return json.loads(SETTINGS_FILE.read_text(encoding='utf-8')).get(key, default)
+    except: pass
+    return default
+
+
+def save_setting(key, value):
+    try:
+        data = {}
+        if SETTINGS_FILE.exists(): data = json.loads(SETTINGS_FILE.read_text(encoding='utf-8'))
+        data[key] = value
+        SETTINGS_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
+    except: pass
+
+
+def get_single_download_path():
+    return load_setting("single_download_path", str(OUTPUT_SINGLE))
+
+
+def get_homepage_download_path():
+    return load_setting("homepage_download_path", str(OUTPUT_HOMEPAGE))
+
 
 # PyInstaller 路径适配
 if getattr(sys, 'frozen', False):
@@ -63,7 +118,7 @@ from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLineEdit, QPushButton, QTextEdit, QProgressBar, QLabel, QFileDialog,
     QStackedWidget, QComboBox, QListWidget, QListWidgetItem, QSplitter,
-    QMessageBox, QInputDialog, QFrame, QMenu, QSystemTrayIcon,
+    QMessageBox, QInputDialog, QFrame, QMenu, QSystemTrayIcon, QScrollArea,
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTranslator, QLocale, QLibraryInfo, QTimer
 from PyQt6.QtGui import QPalette, QColor, QIcon, QFont, QAction
@@ -626,6 +681,7 @@ QToolTip { background: #1A1A3E; color: #F1F5F9; border: 1px solid #252550; borde
 QMessageBox { background: #0A0A14; }
 QMessageBox QLabel { color: #F1F5F9; font-size: 14px; }
 QMessageBox QPushButton { min-width: 80px; padding: 8px 16px; }
+QScrollArea { background: transparent; border: none; }
 """
 
 
@@ -655,6 +711,7 @@ class ModePage(QWidget):
     homepage_clicked = pyqtSignal()
     font_changed = pyqtSignal(QFont)
     cookie_updated = pyqtSignal()
+    settings_clicked = pyqtSignal()
 
     def __init__(self):
         super().__init__()
@@ -724,16 +781,15 @@ class ModePage(QWidget):
 
         layout.addLayout(btn_layout)
 
-        # 反馈 + 字体
+        # 底部按钮
         bottom_layout = QHBoxLayout()
         bottom_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         bottom_layout.setSpacing(12)
-        self.font_btn = QPushButton("字体设置")
-        self.font_btn.setObjectName("secondaryBtn")
-        self.font_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.font_btn.clicked.connect(self._choose_font)
-        self.font_btn.setFixedWidth(120)
-        bottom_layout.addWidget(self.font_btn)
+        self.settings_btn = QPushButton("设置")
+        self.settings_btn.setObjectName("secondaryBtn")
+        self.settings_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.settings_btn.setFixedWidth(110)
+        bottom_layout.addWidget(self.settings_btn)
         self.feedback_btn = QPushButton("反馈建议")
         self.feedback_btn.setObjectName("secondaryBtn")
         self.feedback_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -750,63 +806,8 @@ class ModePage(QWidget):
         layout.addWidget(self._cookie_status)
 
     def _choose_font(self):
-        from PyQt6.QtWidgets import QDialog, QFontComboBox, QSpinBox, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QDialogButtonBox
-        dlg = QDialog(self)
-        dlg.setWindowTitle("字体设置")
-        dlg.resize(400, 150)
-        layout = QVBoxLayout(dlg)
-
-        # 字体选择
-        row1 = QHBoxLayout()
-        row1.addWidget(QLabel("字体:"))
-        combo = QFontComboBox()
-        combo.setEditable(False)
-        row1.addWidget(combo, 1)
-        layout.addLayout(row1)
-
-        # 字号选择
-        row2 = QHBoxLayout()
-        row2.addWidget(QLabel("字号:"))
-        spin = QSpinBox()
-        spin.setRange(8, 48)
-        spin.setValue(10)
-        row2.addWidget(spin)
-        row2.addStretch()
-        layout.addLayout(row2)
-
-        # 预览
-        preview = QLabel("预览效果 ABC 中文")
-        preview.setMinimumHeight(40)
-        preview.setStyleSheet("border: 1px solid #0f3460; border-radius: 4px; padding: 8px;")
-        layout.addWidget(preview)
-
-        # 当前设置
-        current = load_font()
-        if current:
-            combo.setCurrentFont(current)
-            spin.setValue(current.pointSize())
-        else:
-            combo.setCurrentFont(self.font())
-            spin.setValue(self.font().pointSize())
-
-        def on_change():
-            f = combo.currentFont()
-            f.setPointSize(spin.value())
-            preview.setFont(f)
-
-        combo.currentFontChanged.connect(on_change)
-        spin.valueChanged.connect(on_change)
-        on_change()
-
-        # 按钮
-        btns = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
-        btns.accepted.connect(dlg.accept)
-        btns.rejected.connect(dlg.reject)
-        layout.addWidget(btns)
-
-        if dlg.exec() == QDialog.DialogCode.Accepted:
-            font = combo.currentFont()
-            font.setPointSize(spin.value())
+        accepted, font = choose_font_dialog(self, load_font() or self.font())
+        if accepted:
             save_font(font)
             self.font_changed.emit(font)
 
@@ -909,7 +910,7 @@ class SinglePage(QWidget):
         path_row.setSpacing(10)
         path_row.addWidget(QLabel("保存到"))
         self.path_input = QLineEdit()
-        self.path_input.setText(str(OUTPUT_SINGLE))
+        self.path_input.setText(get_single_download_path())
         path_row.addWidget(self.path_input)
         browse = QPushButton("浏览...")
         browse.setObjectName("secondaryBtn")
@@ -1107,7 +1108,7 @@ class HomepagePage(QWidget):
         ctrl.addSpacing(20)
         ctrl.addWidget(QLabel("保存到"))
         self.path_input = QLineEdit()
-        self.path_input.setText(str(OUTPUT_HOMEPAGE))
+        self.path_input.setText(get_homepage_download_path())
         ctrl.addWidget(self.path_input)
         browse = QPushButton("浏览...")
         browse.setObjectName("secondaryBtn")
@@ -1290,6 +1291,128 @@ class HomepagePage(QWidget):
 # ============================================================
 # 主窗口
 # ============================================================
+# ============================================================
+# 页面4: 设置
+# ============================================================
+class SettingsPage(QWidget):
+    back_clicked = pyqtSignal()
+    font_changed = pyqtSignal(QFont)
+    cookie_updated = pyqtSignal()
+
+    def __init__(self):
+        super().__init__()
+        self._build()
+
+    def _build(self):
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(16, 16, 16, 16); outer.setSpacing(0)
+
+        top = QHBoxLayout()
+        back = QPushButton("  < 返回"); back.setObjectName("secondaryBtn")
+        back.setCursor(Qt.CursorShape.PointingHandCursor); back.clicked.connect(self.back_clicked)
+        back.setFixedSize(80, 36); top.addWidget(back)
+        icon_lbl = QLabel("S")
+        icon_lbl.setStyleSheet("font-size:28px;font-weight:800;color:#E11D48;background:#1A1030;border-radius:12px;min-width:44px;max-width:44px;min-height:44px;max-height:44px;")
+        icon_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter); top.addWidget(icon_lbl)
+        title = QLabel("设置"); title.setStyleSheet("font-size:20px;font-weight:bold;color:#E11D48;")
+        top.addWidget(title); top.addStretch(); outer.addLayout(top); outer.addSpacing(16)
+
+        scroll = QScrollArea(); scroll.setWidgetResizable(True); scroll.setFrameShape(QFrame.Shape.NoFrame)
+        container = QWidget(); cards_layout = QVBoxLayout(container)
+        cards_layout.setSpacing(16); cards_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Card 1: 字体
+        fc = self._card("字体设置")
+        self.font_preview = QLabel("预览效果 ABC 中文")
+        cf = load_font() or self.font(); self.font_preview.setFont(cf); self.font_preview.setMinimumHeight(36)
+        self.font_preview.setStyleSheet("background:#0B0B1A;border:1px solid #252550;border-radius:8px;padding:10px;color:#F1F5F9;")
+        fc.layout().addWidget(self.font_preview)
+        self.font_info = QLabel(f"当前: {cf.family()}, {cf.pointSize()}pt")
+        self.font_info.setStyleSheet("color:#64748B;font-size:12px;padding:4px 0;"); fc.layout().addWidget(self.font_info)
+        fbr = QHBoxLayout(); fbr.addStretch()
+        fb = QPushButton("更改字体"); fb.setObjectName("secondaryBtn"); fb.setCursor(Qt.CursorShape.PointingHandCursor)
+        fb.clicked.connect(self._choose_font); fbr.addWidget(fb); fc.layout().addLayout(fbr)
+        cards_layout.addWidget(fc)
+
+        # Card 2: 下载路径
+        pc = self._card("下载路径")
+        for label, getter, setter in [
+            ("单视频保存到:", get_single_download_path, "_change_single_path"),
+            ("主页下载保存到:", get_homepage_download_path, "_change_homepage_path"),
+        ]:
+            row = QHBoxLayout()
+            lbl = QLabel(label); lbl.setStyleSheet("color:#94A3B8;font-size:13px;min-width:110px;"); row.addWidget(lbl)
+            pl = QLabel(getter()); pl.setStyleSheet("color:#64748B;font-size:12px;background:#0B0B1A;border:1px solid #252550;border-radius:6px;padding:6px 10px;")
+            pl.setWordWrap(True); row.addWidget(pl, 1)
+            ch = QPushButton("更改"); ch.setObjectName("secondaryBtn"); ch.setCursor(Qt.CursorShape.PointingHandCursor)
+            ch.setFixedWidth(60); ch.clicked.connect(getattr(self, setter)); row.addWidget(ch); pc.layout().addLayout(row)
+            setattr(self, "single_path_label" if "单" in label else "homepage_path_label", pl)
+        cards_layout.addWidget(pc)
+
+        # Card 3: Cookie
+        cc = self._card("Cookie 管理")
+        self.cookie_status_label = QLabel(); self.cookie_status_label.setStyleSheet("font-size:13px;padding:4px 0;")
+        self.cookie_time_label = QLabel(); self.cookie_time_label.setStyleSheet("color:#64748B;font-size:12px;padding:2px 0;")
+        cc.layout().addWidget(self.cookie_status_label); cc.layout().addWidget(self.cookie_time_label)
+        cbr = QHBoxLayout(); cbr.addStretch()
+        cb = QPushButton("更新 Cookie"); cb.setObjectName("secondaryBtn"); cb.setCursor(Qt.CursorShape.PointingHandCursor)
+        cb.clicked.connect(self._set_cookie); cbr.addWidget(cb); cc.layout().addLayout(cbr)
+        cards_layout.addWidget(cc)
+
+        # Card 4: 关于
+        ac = self._card("关于")
+        at = QLabel(f"<b>抖净 DouClean</b> &nbsp; v{VERSION}<br><br>抖音无水印下载工具<br>支持单视频 / 图集 / 实况照片 / 主页批量下载<br><br><a href='https://gitee.com/Renxint/douclean' style='color:#E11D48;'>Gitee: gitee.com/Renxint/douclean</a><br><br><span style='color:#64748B;'>© 2026 Renxint</span>")
+        at.setOpenExternalLinks(True); at.setStyleSheet("color:#94A3B8;font-size:13px;"); at.setTextFormat(Qt.TextFormat.RichText)
+        ac.layout().addWidget(at); cards_layout.addWidget(ac)
+        cards_layout.addStretch()
+        scroll.setWidget(container); outer.addWidget(scroll, 1)
+        self.refresh_cookie_status()
+
+    def _card(self, title_text):
+        card = QFrame()
+        card.setStyleSheet("QFrame { background:#12122A;border:1px solid #252550;border-radius:12px; }")
+        layout = QVBoxLayout(card); layout.setContentsMargins(20, 16, 20, 16); layout.setSpacing(10)
+        t = QLabel(title_text); t.setStyleSheet("font-size:15px;font-weight:bold;color:#E11D48;border:none;background:transparent;")
+        layout.addWidget(t); return card
+
+    def refresh_cookie_status(self):
+        cs = get_cookie_status()
+        if cs["ok"]: dot, txt = "#22C55E", "Cookie 已就绪"
+        elif cs["length"] > 0: dot, txt = "#F59E0B", "Cookie 可能无效"
+        else: dot, txt = "#EF4444", "Cookie 未设置"
+        self.cookie_status_label.setText(f'<span style="color:{dot};font-size:16px;">●</span> <span style="color:#F1F5F9;">{txt}</span> <span style="color:#64748B;">({cs["length"]}字符)</span>')
+        if cs["mtime"]:
+            ts = time.strftime("%Y-%m-%d %H:%M", time.localtime(cs["mtime"]))
+            age = (time.time() - cs["mtime"]) / 86400
+            hint = " (可能已过期)" if age > 7 else ""
+            self.cookie_time_label.setText(f"最后更新: {ts}{hint}")
+        else:
+            self.cookie_time_label.setText("尚未设置 Cookie")
+
+    def _choose_font(self):
+        accepted, font = choose_font_dialog(self, load_font() or self.font())
+        if accepted:
+            save_font(font); self.font_preview.setFont(font)
+            self.font_info.setText(f"当前: {font.family()}, {font.pointSize()}pt")
+            self.font_changed.emit(font)
+
+    def _change_single_path(self):
+        folder = QFileDialog.getExistingDirectory(self, "选择单视频保存目录", get_single_download_path())
+        if folder: save_setting("single_download_path", folder); self.single_path_label.setText(folder)
+
+    def _change_homepage_path(self):
+        folder = QFileDialog.getExistingDirectory(self, "选择主页下载保存目录", get_homepage_download_path())
+        if folder: save_setting("homepage_download_path", folder); self.homepage_path_label.setText(folder)
+
+    def _set_cookie(self):
+        current = COOKIE_FILE.read_text(encoding="utf-8").strip() if COOKIE_FILE.exists() else ""
+        new, ok = QInputDialog.getMultiLineText(self, "设置 Cookie", "请粘贴抖音登录后的 Cookie：", current)
+        if ok and new.strip():
+            COOKIE_FILE.parent.mkdir(parents=True, exist_ok=True)
+            COOKIE_FILE.write_text(new.strip(), encoding="utf-8")
+            self.refresh_cookie_status(); self.cookie_updated.emit()
+
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -1319,16 +1442,21 @@ class MainWindow(QMainWindow):
         self.mode_page = ModePage()
         self.single_page = SinglePage()
         self.homepage_page = HomepagePage()
+        self.settings_page = SettingsPage()
 
-        self.stack.addWidget(self.mode_page)     # 0
-        self.stack.addWidget(self.single_page)    # 1
-        self.stack.addWidget(self.homepage_page)  # 2
+        self.stack.addWidget(self.mode_page)      # 0
+        self.stack.addWidget(self.single_page)     # 1
+        self.stack.addWidget(self.homepage_page)   # 2
+        self.stack.addWidget(self.settings_page)   # 3
 
         self.mode_page.single_clicked.connect(lambda: self.stack.setCurrentIndex(1))
         self.mode_page.homepage_clicked.connect(lambda: self.stack.setCurrentIndex(2))
+        self.mode_page.settings_clicked.connect(lambda: self.stack.setCurrentIndex(3))
         self.single_page.back_clicked.connect(lambda: self._go_home())
         self.homepage_page.back_clicked.connect(lambda: self._go_home())
+        self.settings_page.back_clicked.connect(lambda: self._go_home())
         self.mode_page.font_changed.connect(self._apply_font)
+        self.settings_page.font_changed.connect(self._apply_font)
 
         # 加载保存的字体
         saved = load_font()
@@ -1336,6 +1464,7 @@ class MainWindow(QMainWindow):
             QApplication.instance().setFont(saved)
 
         self.mode_page.cookie_updated.connect(self._on_cookie_updated)
+        self.settings_page.cookie_updated.connect(self._on_cookie_updated)
         self.stack.setCurrentIndex(0)
 
         # 快捷键
@@ -1348,7 +1477,8 @@ class MainWindow(QMainWindow):
         from PyQt6.QtGui import QShortcut, QKeySequence
         QShortcut(QKeySequence("Ctrl+H"), self).activated.connect(lambda: self._go_home())
         QShortcut(QKeySequence("Ctrl+Q"), self).activated.connect(self._real_quit)
-        QShortcut(QKeySequence("Ctrl+,"), self).activated.connect(self.mode_page._choose_font)
+        QShortcut(QKeySequence("Ctrl+,"), self).activated.connect(lambda: self.stack.setCurrentIndex(3))
+        QShortcut(QKeySequence("Ctrl+S"), self).activated.connect(lambda: self.stack.setCurrentIndex(3))
         QShortcut(QKeySequence("Escape"), self).activated.connect(lambda: self.hide() if self._tray and self._tray.isVisible() else None)
 
     def _apply_font(self, font):
@@ -1376,10 +1506,11 @@ class MainWindow(QMainWindow):
 
     def _go_home(self):
         self.mode_page.refresh_cookie_status()
+        self.settings_page.refresh_cookie_status()
         self.stack.setCurrentIndex(0)
 
     def _on_cookie_updated(self):
-        pass
+        self.settings_page.refresh_cookie_status()
 
     # ============ 托盘 & 窗口管理 ============
 
