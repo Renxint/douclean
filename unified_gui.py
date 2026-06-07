@@ -18,7 +18,7 @@ CREATE_NO_WINDOW = 0x08000000 if sys.platform == 'win32' else 0
 
 # 版本 & 反馈
 VERSION = "1.0.0"
-VERSION_URL = "https://gitee.com/Renxint/douyin-downloader/raw/master/version.json"
+VERSION_URL = "https://gitee.com/Renxint/douclean/raw/master/version.json"
 DINGTALK_WEBHOOK = "https://oapi.dingtalk.com/robot/send?access_token=140b22bf4f35c675bf36c7441a78871f4678762df788dd7079dd0f565f312ee9"
 
 
@@ -65,7 +65,7 @@ from PyQt6.QtWidgets import (
     QStackedWidget, QComboBox, QListWidget, QListWidgetItem, QSplitter,
     QMessageBox, QInputDialog, QFrame, QMenu, QSystemTrayIcon,
 )
-from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTranslator, QLocale, QLibraryInfo, QSharedMemory, QTimer
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTranslator, QLocale, QLibraryInfo, QTimer
 from PyQt6.QtGui import QPalette, QColor, QIcon, QFont, QAction
 
 import requests
@@ -74,13 +74,17 @@ import requests
 # ============================================================
 # 全局：单实例 + 异常钩子
 # ============================================================
+import socket
+
 def setup_single_instance():
-    """返回 None 表示是首个实例"""
-    sm = QSharedMemory("DouClean_SingleInstance")
-    if sm.attach():
-        return sm
-    sm.create(1)
-    return None
+    """用本地 socket 检测：端口被占用 → 已有实例"""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.bind(('127.0.0.1', 19998))
+        s.listen(1)
+        return s  # 返回 socket 对象表示首个实例，进程退出时自动释放
+    except OSError:
+        return None  # 端口被占用，已有实例
 
 
 def global_exception_handler(exc_type, exc_value, exc_tb):
@@ -1410,9 +1414,9 @@ class MainWindow(QMainWindow):
 
 
 def main():
-    # 单实例检测
-    existing = setup_single_instance()
-    if existing:
+    # 单实例检测（用本地 socket 端口占用）
+    _instance_socket = setup_single_instance()
+    if _instance_socket is None:
         QMessageBox.information(None, "抖净", "抖净已在运行中，请查看系统托盘。")
         return
 
