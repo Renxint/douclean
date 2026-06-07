@@ -1777,21 +1777,22 @@ def _startup_swap_if_needed():
                     dst.parent.mkdir(parents=True, exist_ok=True); shutil.copy2(src, dst)
             except Exception: pass
 
-        # 写 .bat 脚本：等待旧进程退出 → 删除旧版 → 重命名新版 → 启动 → 自删
-        bat = EXE_DIR.parent / "_swap.bat"
+        # 用 Python 子进程完成替换（不受编码影响）
         exe_name = "抖净.exe"
-        bat_content = (
-            f'@echo off\r\n'
-            f'chcp 65001 >nul\r\n'
-            f'ping 127.0.0.1 -n 2 >nul\r\n'
-            f'rmdir /s /q "{EXE_DIR}"\r\n'
-            f'move "{new_dir}" "{EXE_DIR}"\r\n'
-            f'start "" "{EXE_DIR}\\\\{exe_name}"\r\n'
-            f'del "%~f0"\r\n'
+        swap_py = EXE_DIR.parent / "_swap.py"
+        swap_py.write_text(
+            'import os, sys, time, shutil, subprocess\n'
+            f'time.sleep(2)\n'
+            f'old = r\"{EXE_DIR}\"\n'
+            f'new = r\"{new_dir}\"\n'
+            f'shutil.rmtree(old, ignore_errors=True)\n'
+            f'os.rename(new, old)\n'
+            f'subprocess.Popen([os.path.join(old, \"{exe_name}\")])\n'
+            f'os.unlink(__file__)\n',
+            encoding='utf-8'
         )
-        bat.write_text(bat_content, encoding='utf-8')
         subprocess.Popen(
-            ['cmd', '/c', str(bat)],
+            [sys.executable, str(swap_py)],
             creationflags=CREATE_NO_WINDOW if sys.platform == 'win32' else 0,
         )
         os._exit(0)
