@@ -50,9 +50,8 @@ def safe_write_json(path: Path, data: dict):
     safe_write(path, json.dumps(data, ensure_ascii=False, indent=2))
 
 # 版本 & 反馈
-VERSION = "1.0.0"
-VERSION_URL = "https://gitee.com/Renxint/douclean/raw/master/version.json"
-DINGTALK_WEBHOOK = "https://oapi.dingtalk.com/robot/send?access_token=140b22bf4f35c675bf36c7441a78871f4678762df788dd7079dd0f565f312ee9"
+from src.config import VERSION, VERSION_URL, DINGTALK_WEBHOOK, USER_AGENT, WEBID, VERIFY_FP, FP, UIFID
+from src.utils import clean_name, pick_best_video_url, compare_versions, parse_sec_user_id, classify_url
 
 
 def load_font():
@@ -216,34 +215,6 @@ UA = (
     "Chrome/141.0.0.0 Safari/537.36 "
     "SLBrowser/9.0.8.5161 SLBChan/111 SLBVPV/64-bit"
 )
-
-
-def clean_name(s, n=50):
-    s = re.sub(r'[\\/:*?"<>|\x00-\x1F\x7F\n\r\t]', '', s or '')
-    s = re.sub(r'[​-‏ - ﻿ -‏]', '', s)
-    s = s.strip().rstrip('. ')
-    return s[:n] or "untitled"
-
-
-def pick_best_video_url(vdata):
-    def _first(urls):
-        for u in (urls or []):
-            if u and ".mp3" not in u:
-                return u
-        return ""
-    bit_rates = vdata.get("bit_rate") or []
-    if bit_rates:
-        best = max(bit_rates, key=lambda b: b.get("bit_rate", 0))
-        return _first((best.get("play_addr") or {}).get("url_list") or [])
-    return _first((vdata.get("download_addr") or {}).get("url_list") or []) or \
-           _first((vdata.get("play_addr") or {}).get("url_list") or [])
-
-
-def parse_sec_user_id(url):
-    m = re.search(r'/user/(MS4wLjAB[A-Za-z0-9_\-]+)', url.strip())
-    if m: return m.group(1)
-    raise ValueError(f"无法提取sec_user_id: {url}")
-
 
 def ensure_cookie(parent_widget) -> str:
     """确保 Cookie 存在，为空则弹窗输入"""
@@ -1517,7 +1488,7 @@ class MainWindow(QMainWindow):
             r = requests.get(VERSION_URL, timeout=5)
             data = r.json()
             remote = data.get("version", "")
-            if remote > VERSION:
+            if compare_versions(remote, VERSION) > 0:
                 note = data.get("note", "")
                 url = data.get("url", "")
                 from PyQt6.QtWidgets import QMessageBox
