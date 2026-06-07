@@ -10,6 +10,7 @@
 
 const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+const fs = require('fs');
 puppeteer.use(StealthPlugin());
 
 const VIDEO_ID = process.argv[2];
@@ -18,6 +19,37 @@ const COOKIE_STR = process.argv[3];
 if (!VIDEO_ID || !COOKIE_STR) {
     console.error('用法: node bootstrap.js <video_id> <cookie_string>');
     process.exit(1);
+}
+
+/**
+ * 自动检测系统中可用的浏览器路径
+ */
+function findBrowser() {
+    const candidates = [
+        // Chrome
+        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+        'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+        process.env.LOCALAPPDATA + '\\Google\\Chrome\\Application\\chrome.exe',
+        // Edge
+        'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+        'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+        // Brave
+        'C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe',
+        // Chromium
+        'C:\\Program Files\\Chromium\\Application\\chrome.exe',
+    ];
+    for (const p of candidates) {
+        if (fs.existsSync(p)) {
+            console.error('[bootstrap] 检测到浏览器: ' + p);
+            return p;
+        }
+    }
+    // Puppeteer 自带的 Chromium
+    try {
+        const puppeteer = require('puppeteer');
+        return puppeteer.executablePath();
+    } catch (e) {}
+    return null;
 }
 
 const FINGERPRINTS = {
@@ -31,8 +63,15 @@ const FINGERPRINTS = {
     let browser;
     try {
         console.error('[bootstrap] 启动浏览器...');
+        const browserPath = findBrowser();
+        if (!browserPath) {
+            console.error('[bootstrap] 未找到可用浏览器! 请安装 Chrome 或 Edge');
+            console.log(JSON.stringify({_error: '未找到可用浏览器'}));
+            process.exit(1);
+        }
         browser = await puppeteer.launch({
             headless: 'new',
+            executablePath: browserPath,
             args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-blink-features=AutomationControlled'],
         });
         const page = await browser.newPage();
