@@ -1661,6 +1661,14 @@ class MainWindow(QMainWindow):
     def _apply_font(self, font):
         QApplication.instance().setFont(font)
 
+    def _go_home(self):
+        self.mode_page.refresh_cookie_status()
+        self.settings_page.refresh_cookie_status()
+        self.stack.setCurrentIndex(0)
+
+    def _on_cookie_updated(self):
+        self.settings_page.refresh_cookie_status()
+
     def _check_version(self):
         try:
             r = requests.get(VERSION_URL, timeout=5)
