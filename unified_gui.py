@@ -1033,6 +1033,10 @@ class SinglePage(QWidget):
         self.status.setText(msg)
         if ok: self.progress.setValue(100)
         self._refresh_downloaded()
+        # 托盘通知
+        w = self.window()
+        if ok and hasattr(w, 'tray_notify'):
+            w.tray_notify("抖净", "下载完成", duration=3000)
 
 
 # ============================================================
@@ -1250,7 +1254,12 @@ class HomepagePage(QWidget):
         if stats.get("cancelled"):
             self.status.setText("已取消")
         else:
+            total = stats.get('video',0) + stats.get('image',0)
             self.status.setText(f"视频:{stats.get('video',0)} 图片:{stats.get('image',0)} 跳过:{stats.get('skip',0)}")
+            # 托盘通知
+            w = self.window()
+            if total > 0 and hasattr(w, 'tray_notify'):
+                w.tray_notify("抖净", f"下载完成 · 视频{stats.get('video',0)} 图片{stats.get('image',0)}", duration=3000)
         if stats.get('video',0)+stats.get('image',0)>0: self.progress.setValue(self.progress.maximum())
         self._refresh_users()
 
@@ -1329,8 +1338,18 @@ class MainWindow(QMainWindow):
         self.mode_page.cookie_updated.connect(self._on_cookie_updated)
         self.stack.setCurrentIndex(0)
 
+        # 快捷键
+        self._setup_shortcuts()
+
         # 后台检查版本更新
         threading.Thread(target=self._check_version, daemon=True).start()
+
+    def _setup_shortcuts(self):
+        from PyQt6.QtGui import QShortcut, QKeySequence
+        QShortcut(QKeySequence("Ctrl+H"), self).activated.connect(lambda: self._go_home())
+        QShortcut(QKeySequence("Ctrl+Q"), self).activated.connect(self._real_quit)
+        QShortcut(QKeySequence("Ctrl+,"), self).activated.connect(self.mode_page._choose_font)
+        QShortcut(QKeySequence("Escape"), self).activated.connect(lambda: self.hide() if self._tray and self._tray.isVisible() else None)
 
     def _apply_font(self, font):
         QApplication.instance().setFont(font)
