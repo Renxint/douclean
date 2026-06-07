@@ -594,10 +594,17 @@ class ModePage(QWidget):
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.setSpacing(30)
 
+        # 标题行: DouClean + 版本徽章
+        title_row = QHBoxLayout()
+        title_row.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title = QLabel("DouClean")
         title.setStyleSheet("font-size: 32px; font-weight: 800; color: #F1F5F9;")
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(title)
+        title_row.addWidget(title)
+        ver = QLabel(f"v{VERSION}")
+        ver.setStyleSheet("font-size: 11px; color: #FFF; background: #E11D48; border-radius: 4px; padding: 2px 8px;")
+        ver.setFixedHeight(20)
+        title_row.addWidget(ver)
+        layout.addLayout(title_row)
 
         sub = QLabel("抖净 · 抖音无水印下载工具")
         sub.setStyleSheet("font-size: 14px; color: #64748B;")
@@ -862,6 +869,9 @@ class SinglePage(QWidget):
         rl.setContentsMargins(0,0,0,0)
         rl.addWidget(QLabel("已下载"))
         self.downloaded_list = QListWidget()
+        self.downloaded_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.downloaded_list.customContextMenuRequested.connect(self._on_context_menu)
+        self.downloaded_list.itemDoubleClicked.connect(self._open_folder)
         rl.addWidget(self.downloaded_list)
         open_btn = QPushButton("打开目录")
         open_btn.setObjectName("secondaryBtn")
@@ -918,6 +928,7 @@ class SinglePage(QWidget):
 
         save_dir = self.path_input.text().strip() or str(OUTPUT_SINGLE)
         self.dl_btn.setEnabled(False)
+        self.dl_btn.setText("下载中...")
         self.progress.setVisible(True); self.progress.setValue(0)
         self.log_view.clear()
 
@@ -931,8 +942,22 @@ class SinglePage(QWidget):
         self.log_view.append(msg)
         sb = self.log_view.verticalScrollBar(); sb.setValue(sb.maximum())
 
+    def _on_context_menu(self, pos):
+        item = self.downloaded_list.itemAt(pos)
+        if not item: return
+        from PyQt6.QtWidgets import QMenu
+        menu = QMenu(self)
+        a1 = menu.addAction("打开文件夹")
+        a2 = menu.addAction("复制路径")
+        action = menu.exec(self.downloaded_list.mapToGlobal(pos))
+        p = item.data(Qt.ItemDataRole.UserRole)
+        if not p: return
+        if action == a1 and Path(p).exists(): os.startfile(p)
+        elif action == a2: QApplication.clipboard().setText(p)
+
     def _done(self, ok, msg):
         self.dl_btn.setEnabled(True)
+        self.dl_btn.setText("开始下载")
         self.status.setText(msg)
         if ok: self.progress.setValue(100)
         self._refresh_downloaded()
@@ -1034,6 +1059,9 @@ class HomepagePage(QWidget):
         rl.setContentsMargins(0,0,0,0)
         rl.addWidget(QLabel("已下载"))
         self.user_list = QListWidget()
+        self.user_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.user_list.customContextMenuRequested.connect(self._on_context_menu)
+        self.user_list.itemDoubleClicked.connect(self._open_folder)
         rl.addWidget(self.user_list)
         open_btn = QPushButton("打开目录")
         open_btn.setObjectName("secondaryBtn")
@@ -1100,6 +1128,7 @@ class HomepagePage(QWidget):
             QMessageBox.warning(self, "路径错误", str(e)); return
 
         self.dl_btn.setEnabled(False)
+        self.dl_btn.setText("下载中...")
         self.pause_btn.setEnabled(True); self.cancel_btn.setEnabled(True)
         self.progress.setVisible(True); self.progress.setValue(0)
         self.log_view.clear()
@@ -1124,8 +1153,22 @@ class HomepagePage(QWidget):
         self.log_view.append(msg)
         sb = self.log_view.verticalScrollBar(); sb.setValue(sb.maximum())
 
+    def _on_context_menu(self, pos):
+        item = self.user_list.itemAt(pos)
+        if not item: return
+        from PyQt6.QtWidgets import QMenu
+        menu = QMenu(self)
+        a1 = menu.addAction("打开文件夹")
+        a2 = menu.addAction("复制路径")
+        action = menu.exec(self.user_list.mapToGlobal(pos))
+        p = item.data(Qt.ItemDataRole.UserRole)
+        if not p: return
+        if action == a1 and Path(p).exists(): os.startfile(p)
+        elif action == a2: QApplication.clipboard().setText(p)
+
     def _done(self, stats):
         self.dl_btn.setEnabled(True)
+        self.dl_btn.setText("开始下载")
         self.pause_btn.setEnabled(False); self.cancel_btn.setEnabled(False)
         self.pause_btn.setText("暂停")
         if stats.get("cancelled"):

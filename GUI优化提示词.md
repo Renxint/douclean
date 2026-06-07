@@ -692,25 +692,364 @@ import requests
 | 关于对话框 | 托盘菜单 + `_show_about()` |
 | 状态栏 | `MainWindow.__init__` 末尾 |
 | 设置扩展 | `load_settings/save_settings` + 重构字体保存 |
+| 全局异常捕获 | `main()` 中 `sys.excepthook` + `_debug.log` 写入 |
+| 单实例激活 | `main()` 改进：检测到已有实例时激活其窗口 |
+| 窗口几何记忆 | `MainWindow.__init__` / `closeEvent` / `moveEvent` / `resizeEvent` |
+| 拖放 | `MainWindow` + `SinglePage` + `HomepagePage` dragEnter/drop 事件 |
+| 命令行参数 | `main()` 开头解析 `sys.argv`，传给 `MainWindow` |
+| 快捷键 | `MainWindow.__init__` 中逐页绑定 |
+| 托盘 ToolTip | 下载开始时更新 `self.tray.setToolTip(...)` |
 
 ---
 
-## 改动顺序建议
+# 第三部分：细节增强
 
-> 按依赖关系从上到下执行，每步改完保存即可，最后一次性运行验证。
+> 以下功能让 .exe 工具的使用体验从"能用"升级到"好用"。
 
+---
+
+## 3.1 全局异常捕获 + 开发者日志
+
+### 3.1.1 日志工具函数（文件顶部）
+
+```python
+import traceback
+
+DEBUG_LOG = EXE_DIR / "_debug.log"
+
+def debug_log(msg: str):
+    """写调试日志（静默失败）"""
+    try:
+        with open(DEBUG_LOG, 'a', encoding='utf-8') as f:
+            f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} {msg}\n")
+        # 日志轮转：超过 1MB 截半
+        if DEBUG_LOG.stat().st_size > 1_000_000:
+            keep = DEBUG_LOG.read_text(encoding='utf-8')[-500_000:]
+            DEBUG_LOG.write_text(keep, encoding='utf-8')
+    except Exception:
+        pass
 ```
-1. import 补充 (2.6)                      ← 先把所有导入加上，后续代码不报错
-2. main() 调色板 (1.5) + 单实例 (2.2)     ← 只改 main() 函数
-3. 注册表函数 + 设置扩展 (2.3 + 2.5)      ← 文件顶部加两个工具函数 + 适配 load/save_font
-4. ModePage 卡片 (1.1)                    ← 去 emoji
-5. SinglePage 全部 (1.2)                  ← 顶栏标签 + 尺寸 + 右键 + 按钮并排 + _done()
-6. HomepagePage 全部 (1.3)                ← 同上，注意 widget 名差异
-7. MainWindow._on_cookie_updated (1.4)    ← 补充空方法体
-8. MainWindow 托盘+状态栏+方法 (2.1+2.4)   ← 最后加，涉及最多新方法
+
+### 3.1.2 全局异常钩子（在 `main()` 开头，`app = QApplication(...)` 之后）
+
+```python
+def _global_excepthook(exc_type, exc_value, exc_tb):
+    """捕获未处理异常，写日志 + 弹友好提示"""
+    tb_str = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
+    debug_log(f"CRASH: {tb_str}")
+    # 避免在崩溃处理中二次崩溃
+    try:
+        QMessageBox.critical(
+            None, "抖净 · 出错了",
+            f"程序遇到了未预期的错误：\n\n{exc_value}\n\n"
+            f"详细信息已写入 _debug.log，可反馈给开发者。"
+        )
+    except Exception:
+        pass
+    sys.__excepthook__(exc_type, exc_value, exc_tb)  # 保留默认行为
+
+sys.excepthook = _global_excepthook
+```
+
+### 3.1.3 关键位置加日志
+
+在以下位置插入 `debug_log(...)` 调用（轻量，不影响正常运行）：
+
+- `main()` 入口 → `debug_log("抖净启动 v{VERSION}")`
+- `MainWindow.__init__` 末尾 → `debug_log("MainWindow 初始化完成")`
+- `_real_quit()` → `debug_log("用户退出")`
+- `_check_version()` 异常分支 → `debug_log(f"版本检查失败: {e}")`
+- 任何 `except Exception: pass` 的地方 → 加 `debug_log(f"…: {e}")`
+
+---
+
+## 3.2 单实例增强：激活已有窗口
+
+当前 2.2 的方案是弹警告 → 退出。改进为**激活已有实例的窗口**：
+
+```python
+def main():
+    app = QApplication(sys.argv)
+    app.setApplicationName("DouClean")
+
+    # --- 单实例检测 + 激活已有窗口 ---
+    shared_mem = QSharedMemory("DouClean_SingleInstance_Key")
+    if shared_mem.attach():
+        # 已有实例 → 通过 Windows 消息激活它
+        from PyQt6.QtCore import QTimer
+        # 发一条简单的"显示"指令：写入共享内存后退出
+        shared_mem.detach()
+        # 无法直接跨进程激活，降级为友好提示
+        QMessageBox.information(None, "抖净", "程序已在运行中\n请查看屏幕右下角系统托盘")
+        sys.exit(0)
+    shared_mem.create(1)
+
+    # ... 原有初始化 ...
+```
+
+> 跨进程激活的完美方案需要 Windows `SendMessage` + `FindWindow`，复杂度高。当前方案先保证「不重复启动 + 引导用户去托盘找」，已够用。
+
+---
+
+## 3.3 窗口几何记忆
+
+启动时恢复上次的窗口位置和大小，关闭时保存。
+
+### 3.3.1 保存几何（在 `closeEvent` 中，最小化到托盘之前）
+
+```python
+def closeEvent(self, event):
+    if self.tray.isVisible():
+        # 保存窗口几何
+        data = load_settings()
+        data["window"] = {
+            "x": self.x(), "y": self.y(),
+            "w": self.width(), "h": self.height(),
+        }
+        save_settings(data)
+
+        self.hide()
+        self.tray.showMessage("抖净", "已最小化到系统托盘，右键可退出",
+                              QSystemTrayIcon.MessageIcon.Information, 2000)
+        event.ignore()
+    else:
+        self._real_quit()
+```
+
+### 3.3.2 恢复几何（在 `MainWindow.__init__` 末尾，`show()` 之前）
+
+```python
+# 恢复窗口几何
+geo = load_settings().get("window")
+if geo and all(k in geo for k in ("x", "y", "w", "h")):
+    self.setGeometry(geo["x"], geo["y"], geo["w"], geo["h"])
+else:
+    self.resize(820, 640)
+self.setMinimumSize(640, 480)
 ```
 
 ---
+
+## 3.4 拖放链接到输入框
+
+从浏览器拖 URL 到窗口 → 自动填入。
+
+### 3.4.1 MainWindow 接受拖放（`__init__` 中）
+
+```python
+self.setAcceptDrops(True)
+```
+
+### 3.4.2 MainWindow 拖放处理
+
+```python
+def dragEnterEvent(self, event):
+    if event.mimeData().hasUrls() or event.mimeData().hasText():
+        event.acceptProposedAction()
+
+def dropEvent(self, event):
+    text = event.mimeData().text().strip()
+    if not text:
+        urls = event.mimeData().urls()
+        if urls: text = urls[0].toString()
+    if not text: return
+
+    if "douyin.com" in text or "v.douyin.com" in text:
+        if "/user/" in text:
+            # 主页链接 → 跳转主页批量页 + 填入
+            self.stack.setCurrentIndex(2)
+            self.homepage_page.url_input.setText(text)
+        else:
+            # 单视频链接 → 跳转单视频页 + 填入
+            self.stack.setCurrentIndex(1)
+            self.single_page.url_input.setText(text)
+        self._show_from_tray()
+```
+
+### 3.4.3 每个页面的输入框也允许拖放
+
+在 `SinglePage._build()` 和 `HomepagePage._build()` 中：
+
+```python
+self.url_input.setAcceptDrops(True)
+# 可选：重写 url_input 的 dropEvent（见下方）
+```
+
+如果 `QLineEdit` 默认拖放行为不满足需求（比如拖入时替换而非追加），在各自的 `_build()` 后新增：
+
+```python
+class DropLineEdit(QLineEdit):
+    """支持拖放链接的输入框"""
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasText() or event.mimeData().hasUrls():
+            event.acceptProposedAction()
+    def dropEvent(self, event):
+        text = event.mimeData().text().strip()
+        if not text and event.mimeData().urls():
+            text = event.mimeData().urls()[0].toString()
+        if text:
+            self.setText(text)
+
+# 然后在 _build() 中把 QLineEdit 换成 DropLineEdit
+self.url_input = DropLineEdit()
+```
+
+> `DropLineEdit` 类放在文件顶部 `get_cookie_status()` 附近即可。
+
+---
+
+## 3.5 命令行参数
+
+支持启动时直接传入链接。
+
+### 3.5.1 在 `main()` 中解析参数，传给 `MainWindow`
+
+```python
+def main():
+    # ... app 初始化 ...
+
+    # 解析命令行参数（第一个参数是脚本路径，跳过）
+    pending_url = None
+    for arg in sys.argv[1:]:
+        if arg.startswith("http"):
+            pending_url = arg
+            break
+
+    window = MainWindow()
+    window._shared_mem = shared_mem
+
+    if pending_url:
+        # 延迟处理（等窗口完全初始化后）
+        from PyQt6.QtCore import QTimer
+        QTimer.singleShot(300, lambda: window._handle_startup_url(pending_url))
+
+    window.show()
+    sys.exit(app.exec())
+```
+
+### 3.5.2 MainWindow 新增方法
+
+```python
+def _handle_startup_url(self, url):
+    """处理命令行/拖放传入的链接"""
+    if not url or "douyin.com" not in url:
+        return
+    if "/user/" in url:
+        self.stack.setCurrentIndex(2)
+        self.homepage_page.url_input.setText(url)
+    else:
+        self.stack.setCurrentIndex(1)
+        self.single_page.url_input.setText(url)
+```
+
+> `MainWindow.dropEvent` 也可以复用这个方法来去重。
+
+---
+
+## 3.6 键盘快捷键
+
+### 3.6.1 在 `MainWindow.__init__` 末尾绑定
+
+```python
+# ═══ 键盘快捷键 ═══
+# 窗口级（始终可用）
+self._shortcut_quit = QShortcut("Ctrl+Q", self)
+self._shortcut_quit.activated.connect(self._real_quit)
+
+self._shortcut_home = QShortcut("Ctrl+H", self)
+self._shortcut_home.activated.connect(self._go_home)
+
+self._shortcut_settings = QShortcut("Ctrl+,", self)
+self._shortcut_settings.activated.connect(self.mode_page._choose_font)
+
+# Escape → 最小化到托盘
+self._shortcut_hide = QShortcut("Escape", self)
+self._shortcut_hide.activated.connect(lambda: self.close())
+# ↑ close() 会走 closeEvent → 最小化到托盘
+```
+
+### 3.6.2 在 import 区补充
+
+```python
+from PyQt6.QtGui import QShortcut, QKeySequence
+```
+
+### 3.6.3 快捷键列表（显示在关于对话框中）
+
+更新 `_show_about()` 方法，在链接下方加一行：
+
+```python
+f"<p><small>快捷键: Ctrl+Q 退出 | Ctrl+H 首页 | Ctrl+, 字体 | Esc 最小化</small></p>"
+```
+
+---
+
+## 3.7 托盘 ToolTip 动态更新
+
+让托盘图标悬停时显示当前状态。
+
+### 3.7.1 下载开始时更新
+
+在 `SinglePage._start()` 和 `HomepagePage._start()` 中加：
+
+```python
+# 通知托盘（如果存在）
+if hasattr(self, '_main_window') and hasattr(self._main_window, 'tray'):
+    self._main_window.tray.setToolTip("抖净 · 下载中...")
+```
+
+### 3.7.2 下载完成时恢复
+
+在 `SinglePage._done()` 和 `HomepagePage._done()` 末尾加：
+
+```python
+if hasattr(self, '_main_window') and hasattr(self._main_window, 'tray'):
+    self._main_window.tray.setToolTip("抖净 DouClean")
+```
+
+### 3.7.3 MainWindow 注入自身引用
+
+在 `MainWindow.__init__` 中，`_tray` 注入旁边加一行：
+
+```python
+self.single_page._main_window = self
+self.homepage_page._main_window = self
+```
+
+---
+
+## 改动边界总结（第三部分补充）
+
+| 改动 | 涉及方法/区域 |
+|------|-------------|
+| 全局异常钩子 | `main()` + 新函数 `_global_excepthook` |
+| debug_log | 文件顶部新函数 + 关键位置插调用 |
+| 单实例激活 | `main()` 改进（当前方案 + 预留注释） |
+| 窗口几何恢复 | `MainWindow.closeEvent` + `__init__` 末尾 |
+| 拖放（窗口级） | `MainWindow.dragEnterEvent` / `dropEvent` |
+| 拖放（输入框级） | 新类 `DropLineEdit` + 替换 `QLineEdit` |
+| 命令行参数 | `main()` 解析 + `MainWindow._handle_startup_url` |
+| 快捷键 | `MainWindow.__init__` 末尾 + import `QShortcut` |
+| 托盘 ToolTip | `_start()` / `_done()` + `MainWindow` 注入 `_main_window` |
+
+---
+
+## 改动顺序建议（更新版）
+
+```
+ 1. import 补充 (2.6)                       ← QShortcut、QKeySequence
+ 2. debug_log + 全局异常 (3.1)              ← 文件顶部 + main() 
+ 3. main() 调色板 (1.5) + 单实例 (2.2/3.2) + 命令行 (3.5)
+ 4. 注册表函数 + 设置扩展 (2.3 + 2.5)
+ 5. DropLineEdit 类 (3.4.3)                 ← 文件顶部，后面页面要用
+ 6. ModePage 卡片 (1.1)
+ 7. SinglePage 全部 (1.2)                   ← 含 DropLineEdit 替换
+ 8. HomepagePage 全部 (1.3)                 ← 同上
+ 9. MainWindow._on_cookie_updated (1.4)
+10. MainWindow 托盘+状态栏+方法 (2.1+2.4)    ← 含 closeEvent 几何保存
+11. 窗口几何恢复 (3.3)                      ← __init__ 末尾
+12. 拖放+快捷键+注入 (3.4+3.6+3.7)          ← 最后加
+```
 
 ## 验证清单
 
@@ -719,6 +1058,7 @@ import requests
 python D:\Pycharm环境\Claude\projects\douclean\unified_gui.py
 ```
 
+### 基础 GUI
 - [ ] 首页无 emoji，两张卡片显示"1"和"N"数字图标
 - [ ] 卡片 hover 有边框高亮
 - [ ] Cookie 状态灯颜色正确（绿=有效 / 黄=存在但无效 / 红=未设置）
@@ -731,13 +1071,42 @@ python D:\Pycharm环境\Claude\projects\douclean\unified_gui.py
 - [ ] 下载完成 → Cookie 标签同步 + 托盘通知弹出
 - [ ] 进主页批量页 → 同上所有检查
 - [ ] 返回首页 → Cookie 状态同步
-- [ ] **系统托盘图标出现**，右键菜单含：显示主窗口 / 开机自启 / 关于 / 退出
-- [ ] **双击托盘图标 → 显示窗口**
-- [ ] **点 X 关闭 → 最小化到托盘**（不退出），托盘弹出"已最小化"提示
-- [ ] **托盘「退出」→ 真正退出进程**
-- [ ] **双击 exe 再次启动 → 提示"程序已在运行中"**
-- [ ] **开机自启勾选 → 注册表写入；取消勾选 → 注册表删除**
-- [ ] 关于对话框显示版本号和链接
-- [ ] 底部状态栏显示版本号
 - [ ] 全局暗色主题协调，文字清晰
 - [ ] 所有按钮 hover/pressed 有视觉变化
+
+### 系统托盘
+- [ ] 托盘图标出现，悬停显示"抖净 DouClean"
+- [ ] 右键菜单含：显示主窗口 / 开机自启 / 关于 / 退出
+- [ ] 双击托盘图标 → 显示窗口
+- [ ] 点 X 关闭 → 最小化到托盘（不退出），弹出"已最小化"提示
+- [ ] 托盘「退出」→ 真正退出进程
+- [ ] 开机自启勾选 → 注册表写入；取消勾选 → 注册表删除
+- [ ] 下载中托盘 ToolTip 变"下载中..."，完成后恢复
+
+### 单实例
+- [ ] 双击 exe 再次启动 → 提示"程序已在运行中，请查看系统托盘"
+
+### 窗口几何
+- [ ] 拖动窗口位置、调整大小 → 关闭再启动 → 恢复到上次位置
+- [ ] 首次启动 → 默认 820×640
+
+### 拖放
+- [ ] 从浏览器拖抖音链接到窗口 → 自动跳转对应页面并填入
+- [ ] 拖普通文本 → 不响应
+
+### 命令行参数
+- [ ] `python unified_gui.py "https://v.douyin.com/xxx"` → 启动后自动填入
+- [ ] `python unified_gui.py "https://www.douyin.com/user/xxx"` → 跳转主页页
+
+### 快捷键
+- [ ] `Ctrl+Q` → 退出
+- [ ] `Ctrl+H` → 回首页
+- [ ] `Ctrl+,` → 字体设置
+- [ ] `Esc` → 最小化到托盘
+
+### 异常处理
+- [ ] 故意制造错误（如删掉 sign-server 文件夹后下载） → 弹友好提示而非崩溃
+- [ ] `_debug.log` 文件生成在 EXE_DIR，含时间戳和错误详情
+
+### 关于
+- [ ] 关于对话框显示版本号、功能列表、快捷键、Gitee 链接
