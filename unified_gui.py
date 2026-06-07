@@ -56,15 +56,78 @@ PROJECT_DIR = BASE_DIR / "projects" / "douclean" if not getattr(sys, 'frozen', F
 sys.path.insert(0, str(BASE_DIR))
 
 SETTINGS_FILE = EXE_DIR / "settings.json"
+CRASH_LOG = EXE_DIR / "_crash.log"
+
+
+# ============================================================
+# 全局：单实例 + 异常钩子
+# ============================================================
+def setup_single_instance() -> QSharedMemory | None:
+    """返回 None 表示是首个实例，否则返回已有实例的内存对象"""
+    sm = QSharedMemory("DouClean_SingleInstance")
+    if sm.attach():
+        return sm  # 已有实例
+    sm.create(1)
+    return None
+
+
+def global_exception_handler(exc_type, exc_value, exc_tb):
+    """全局未捕获异常 → 写日志 + 弹友好提示"""
+    import traceback
+    tb_str = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
+    try:
+        CRASH_LOG.write_text(
+            f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] CRASH\n{tb_str}\n",
+            encoding='utf-8'
+        )
+    except: pass
+    # 不弹窗打扰用户，静默记录
+
+
+def load_window_geometry() -> dict | None:
+    """加载保存的窗口几何信息"""
+    try:
+        if SETTINGS_FILE.exists():
+            data = json.loads(SETTINGS_FILE.read_text(encoding='utf-8'))
+            return data.get("geometry")
+    except: pass
+    return None
+
+
+def save_window_geometry(geometry: dict):
+    """保存窗口几何信息"""
+    try:
+        data = {}
+        if SETTINGS_FILE.exists():
+            data = json.loads(SETTINGS_FILE.read_text(encoding='utf-8'))
+        data["geometry"] = geometry
+        SETTINGS_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
+    except: pass
+
+
+def colored_log(msg: str) -> str:
+    """给日志文本加颜色 HTML"""
+    if msg.startswith("[ERROR]") or msg.startswith("[FAIL]"):
+        return f'<span style="color:#EF4444">{msg}</span>'
+    elif msg.startswith("[OK]") or msg.startswith("===== DONE"):
+        return f'<span style="color:#22C55E">{msg}</span>'
+    elif msg.startswith("[>>]") or msg.startswith("[翻页]"):
+        return f'<span style="color:#94A3B8">{msg}</span>'
+    elif msg.startswith("[WARN]"):
+        return f'<span style="color:#F59E0B">{msg}</span>'
+    return msg
+
+
+sys.excepthook = global_exception_handler
 
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLineEdit, QPushButton, QTextEdit, QProgressBar, QLabel, QFileDialog,
     QStackedWidget, QComboBox, QListWidget, QListWidgetItem, QSplitter,
-    QMessageBox, QInputDialog, QFrame,
+    QMessageBox, QInputDialog, QFrame, QMenu, QSystemTrayIcon,
 )
-from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTranslator, QLocale, QLibraryInfo
-from PyQt6.QtGui import QPalette, QColor, QIcon, QFont
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTranslator, QLocale, QLibraryInfo, QSharedMemory, QTimer
+from PyQt6.QtGui import QPalette, QColor, QIcon, QFont, QAction
 
 import requests
 
@@ -939,7 +1002,7 @@ class SinglePage(QWidget):
         self.thread.start()
 
     def _log(self, msg):
-        self.log_view.append(msg)
+        self.log_view.append(colored_log(msg))
         sb = self.log_view.verticalScrollBar(); sb.setValue(sb.maximum())
 
     def _on_context_menu(self, pos):
@@ -1150,7 +1213,7 @@ class HomepagePage(QWidget):
             self.thread.cancel()
 
     def _log(self, msg):
-        self.log_view.append(msg)
+        self.log_view.append(colored_log(msg))
         sb = self.log_view.verticalScrollBar(); sb.setValue(sb.maximum())
 
     def _on_context_menu(self, pos):
@@ -1209,14 +1272,24 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("抖净 DouClean")
-        self.resize(800, 620)
-        self.setMinimumSize(600, 450)
         self.setStyleSheet(STYLE)
 
         # 任务栏/标题栏图标
         ico = BASE_DIR / "app.ico"
-        if ico.exists():
-            self.setWindowIcon(QIcon(str(ico)))
+        self._app_icon = QIcon(str(ico)) if ico.exists() else QIcon()
+        self.setWindowIcon(self._app_icon)
+
+        # 恢复窗口位置
+        geo = load_window_geometry()
+        if geo:
+            try: self.restoreGeometry(bytes.fromhex(geo.get("geo","")))
+            except: self.resize(820, 640)
+        else:
+            self.resize(820, 640)
+        self.setMinimumSize(640, 480)
+
+        # 系统托盘
+        self._setup_tray()
 
         self.stack = QStackedWidget()
         self.setCentralWidget(self.stack)
@@ -1242,9 +1315,6 @@ class MainWindow(QMainWindow):
 
         self.mode_page.cookie_updated.connect(self._on_cookie_updated)
         self.stack.setCurrentIndex(0)
-
-        self.resize(820, 640)
-        self.setMinimumSize(640, 480)
 
         # 后台检查版本更新
         threading.Thread(target=self._check_version, daemon=True).start()
@@ -1279,9 +1349,74 @@ class MainWindow(QMainWindow):
     def _on_cookie_updated(self):
         pass
 
+    # ============ 托盘 & 窗口管理 ============
+
+    def _setup_tray(self):
+        """初始化系统托盘"""
+        if not QSystemTrayIcon.isSystemTrayAvailable():
+            self._tray = None; return
+        self._tray = QSystemTrayIcon(self._app_icon, self)
+        self._tray.setToolTip("抖净 DouClean · 就绪")
+        self._tray.activated.connect(self._on_tray_activated)
+
+        menu = QMenu()
+        a_show = menu.addAction("显示主窗口")
+        a_show.triggered.connect(self._show_from_tray)
+        menu.addSeparator()
+        a_about = menu.addAction("关于 抖净")
+        a_about.triggered.connect(lambda: QMessageBox.about(self, "关于 抖净", f"抖净 DouClean v{VERSION}\n抖音无水印下载工具\n\n© 2026 Renxint"))
+        a_update = menu.addAction("检查更新")
+        a_update.triggered.connect(self._check_version)
+        menu.addSeparator()
+        a_quit = menu.addAction("退出")
+        a_quit.triggered.connect(self._real_quit)
+        self._tray.setContextMenu(menu)
+        self._tray.show()
+
+    def _on_tray_activated(self, reason):
+        if reason == QSystemTrayIcon.ActivationReason.DoubleClick:
+            self._show_from_tray()
+
+    def _show_from_tray(self):
+        self.showNormal()
+        self.activateWindow()
+        self.raise_()
+
+    def closeEvent(self, event):
+        """点 X → 最小化到托盘，不退出"""
+        if self._tray and self._tray.isVisible():
+            self.hide()
+            self._tray.showMessage("抖净", "已最小化到托盘，双击恢复", QSystemTrayIcon.MessageIcon.Information, 2000)
+            event.ignore()
+        else:
+            self._real_quit()
+
+    def _real_quit(self):
+        """真正退出"""
+        # 保存窗口位置
+        try:
+            geo_hex = self.saveGeometry().toHex().data().decode()
+            save_window_geometry({"geo": geo_hex})
+        except: pass
+        if self._tray:
+            self._tray.hide()
+        QApplication.quit()
+
+    def tray_notify(self, title, msg, icon=QSystemTrayIcon.MessageIcon.Information, duration=3000):
+        """托盘气泡通知"""
+        if self._tray:
+            self._tray.showMessage(title, msg, icon, duration)
+
 
 def main():
+    # 单实例检测
+    existing = setup_single_instance()
+    if existing:
+        QMessageBox.information(None, "抖净", "抖净已在运行中，请查看系统托盘。")
+        return
+
     app = QApplication(sys.argv)
+    app.setQuitOnLastWindowClosed(False)  # 关闭窗口不退出，配合托盘
 
     # 加载 Qt 中文翻译（qtbase 是基础组件如字体对话框，qt 是其他模块）
     trans_dir = Path(sys._MEIPASS if getattr(sys, 'frozen', False) else BASE_DIR) / "translations"
@@ -1298,7 +1433,7 @@ def main():
     app.setStyle('Fusion')
     palette = QPalette()
     palette.setColor(QPalette.ColorRole.Window, QColor(10, 10, 20))
-    palette.setColor(QPalette.ColorRole.WindowText, QColor(224, 224, 224))
+    palette.setColor(QPalette.ColorRole.WindowText, QColor(241, 245, 249))
     palette.setColor(QPalette.ColorRole.Base, QColor(22, 33, 62))
     palette.setColor(QPalette.ColorRole.Text, QColor(224, 224, 224))
     palette.setColor(QPalette.ColorRole.Button, QColor(233, 69, 96))
