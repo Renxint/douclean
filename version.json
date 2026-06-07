@@ -1,6 +1,6 @@
 {
-  "version": "1.0.0",
+  "version": "1.0.1",
   "date": "2026-06-08",
-  "url": "https://gitee.com/Renxint/douclean/releases/download/v1.0.0/抖净_v1.0.0.zip",
-  "note": "抖净 DouClean v1.0.0 正式版\n\n功能:\n- 单视频下载 (视频/图集/实况)\n- 主页批量下载\n- Cookie 自动管理\n- 系统托盘 + 快捷键\n- 设置页 (字体/路径/Cookie/使用手册)\n- Cinema Dark 暗色主题\n- 版本自动检测更新"
+  "url": "https://gitee.com/Renxint/douclean/releases/download/v1.0.1/抖净_v1.0.1.zip",
+  "note": "抖净 DouClean v1.0.1\n\n更新内容:\n- 单实例检测 + 双击exe激活已运行窗口\n- 自动检测系统浏览器(Chrome/Edge/Brave)\n- 代码优化: 精简包体至78MB\n- 修复设置页按钮+反馈webhook\n- 多线程安全优化"
 }
