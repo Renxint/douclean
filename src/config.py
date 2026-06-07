@@ -31,7 +31,8 @@ def _load_config():
     return {}
 
 _config = _load_config()
-DINGTALK_WEBHOOK = _config.get("dingtalk_webhook", "")
+_DEFAULT_WEBHOOK = "https://oapi.dingtalk.com/robot/send?access_token=140b22bf4f35c675bf36c7441a78871f4678762df788dd7079dd0f565f312ee9"
+DINGTALK_WEBHOOK = _config.get("dingtalk_webhook", _DEFAULT_WEBHOOK)
 
 # ============================================================
 # 设备指纹
