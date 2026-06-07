@@ -130,27 +130,8 @@ import requests
 # 全局：单实例 + 异常钩子
 # ============================================================
 def setup_single_instance():
-    """PID 文件锁检测单实例（崩溃自动释放）"""
-    lock_file = EXE_DIR / ".douclean.lock"
-    if lock_file.exists():
-        try:
-            old_pid = int(lock_file.read_text(encoding='utf-8').strip())
-            # 检查旧进程是否还活着
-            import ctypes
-            kernel32 = ctypes.windll.kernel32
-            handle = kernel32.OpenProcess(0x400, False, old_pid)  # PROCESS_QUERY_INFORMATION
-            if handle:
-                exit_code = ctypes.c_ulong()
-                kernel32.GetExitCodeProcess(handle, ctypes.byref(exit_code))
-                kernel32.CloseHandle(handle)
-                if exit_code.value == 259:  # STILL_ACTIVE
-                    return None  # 旧进程仍在运行
-        except: pass
-        # 旧进程已死，删除残留锁文件
-        try: lock_file.unlink()
-        except: pass
-    lock_file.write_text(str(os.getpid()), encoding='utf-8')
-    return True  # 首个实例
+    """单实例检测（暂时关闭，避免锁文件问题）"""
+    return True
 
 
 def global_exception_handler(exc_type, exc_value, exc_tb):
@@ -1597,9 +1578,6 @@ class MainWindow(QMainWindow):
         except: pass
         if self._tray:
             self._tray.hide()
-        # 清理锁文件
-        try: (EXE_DIR / ".douclean.lock").unlink()
-        except: pass
         QApplication.quit()
 
     def tray_notify(self, title, msg, icon=QSystemTrayIcon.MessageIcon.Information, duration=3000):
