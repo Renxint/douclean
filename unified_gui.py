@@ -1091,15 +1091,17 @@ class MainWindow(QMainWindow):
 def main():
     app = QApplication(sys.argv)
 
-    # 加载 Qt 中文翻译
-    translator = QTranslator()
-    # 优先用打包内的，其次用系统路径
-    local = Path(sys._MEIPASS if getattr(sys, 'frozen', False) else BASE_DIR) / "translations" / "qt_zh_CN.qm"
-    if local.exists():
-        translator.load(str(local))
-    else:
-        translator.load("qt_zh_CN", QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath))
-    app.installTranslator(translator)
+    # 加载 Qt 中文翻译（qtbase 是基础组件如字体对话框，qt 是其他模块）
+    trans_dir = Path(sys._MEIPASS if getattr(sys, 'frozen', False) else BASE_DIR) / "translations"
+    sys_dir = QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath)
+    for qm in ("qtbase_zh_CN", "qt_zh_CN"):
+        t = QTranslator()
+        local = trans_dir / f"{qm}.qm"
+        if local.exists():
+            t.load(str(local))
+        else:
+            t.load(qm, sys_dir)
+        app.installTranslator(t)
 
     app.setStyle('Fusion')
     palette = QPalette()
