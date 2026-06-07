@@ -118,7 +118,7 @@ from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLineEdit, QPushButton, QTextEdit, QProgressBar, QLabel, QFileDialog,
     QStackedWidget, QComboBox, QListWidget, QListWidgetItem, QSplitter,
-    QMessageBox, QInputDialog, QFrame, QMenu, QSystemTrayIcon, QScrollArea, QGraphicsDropShadowEffect,
+    QMessageBox, QInputDialog, QFrame, QMenu, QSystemTrayIcon, QScrollArea,
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTranslator, QLocale, QLibraryInfo, QTimer
 from PyQt6.QtGui import QPalette, QColor, QIcon, QFont, QAction
