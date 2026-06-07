@@ -1681,60 +1681,6 @@ class MainWindow(QMainWindow):
         except Exception:
             pass  # 网络不通，静默跳过
 
-    def _do_update(self, url, remote_ver):
-        """后台下载 → 解压到 _new_version → 下次启动自动替换"""
-        new_dir = EXE_DIR.parent / (EXE_DIR.name + "_new")
-        if new_dir.exists():
-            _slog("update SKIP: already downloaded")
-            self.tray_notify("抖净", f"v{remote_ver} 已就绪，下次启动自动安装")
-            return
-        _slog(f"update START: url={url[:80]}, new_dir={new_dir}")
-        try:
-            # 清理旧残留
-            import shutil as _shutil
-            if new_dir.exists():
-                _shutil.rmtree(new_dir, ignore_errors=True)
-            new_dir.mkdir(parents=True, exist_ok=True)
-
-            # 下载
-            import requests as req
-            r = req.get(url, stream=True, timeout=600)
-            total = int(r.headers.get('content-length', 0))
-            zip_path = new_dir.parent / "_update_dl.zip"
-            dl = 0
-            with open(zip_path, 'wb') as f:
-                for chunk in r.iter_content(8192):
-                    f.write(chunk); dl += len(chunk)
-
-            # 解压到 _new_version
-            import zipfile
-            with zipfile.ZipFile(zip_path, 'r') as z:
-                for m in z.namelist():
-                    parts = m.split('/', 1)
-                    if len(parts) < 2: continue
-                    t = new_dir / parts[1]
-                    if m.endswith('/'): t.mkdir(parents=True, exist_ok=True)
-                    else:
-                        t.parent.mkdir(parents=True, exist_ok=True)
-                        with z.open(m) as src, open(t, 'wb') as dst: dst.write(src.read())
-            zip_path.unlink(missing_ok=True)
-            _slog(f"update DONE: {new_dir} ready, size={sum(f.stat().st_size for f in new_dir.rglob('*') if f.is_file())}")
-
-            self.tray_notify("抖净", f"v{remote_ver} 已就绪，下次启动自动安装")
-        except Exception as e:
-            _slog(f"update FAILED: {e}")
-            self.tray_notify("抖净", f"更新失败: {e}", duration=5000)
-            try: _shutil.rmtree(new_dir, ignore_errors=True)
-            except: pass
-
-    def _go_home(self):
-        self.mode_page.refresh_cookie_status()
-        self.settings_page.refresh_cookie_status()
-        self.stack.setCurrentIndex(0)
-
-    def _on_cookie_updated(self):
-        self.settings_page.refresh_cookie_status()
-
     # ============ 托盘 & 窗口管理 ============
 
     def _setup_tray(self):
