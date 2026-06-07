@@ -1634,6 +1634,11 @@ def main():
         # 已通知旧窗口激活，退出
         return
 
+    # 修复 PyInstaller 打包后 certifi 路径问题
+    import certifi, os as _os
+    _os.environ["SSL_CERT_FILE"] = certifi.where()
+    _os.environ["REQUESTS_CA_BUNDLE"] = certifi.where()
+
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)  # 关闭窗口不退出，配合托盘
 
