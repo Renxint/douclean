@@ -166,26 +166,24 @@ def _slog(msg):
 
 
 def setup_single_instance():
-    """单实例检测 + 已运行则通知旧窗口激活 (Qt LocalServer)"""
+    """单实例检测：先 connect 试探 → 失败则 listen（首个实例）"""
     _slog("setup_single_instance START")
-    server = QLocalServer()
-    ok = server.listen("DouClean_Instance")
-    _slog(f"listen result: {ok}, error: {server.errorString()}")
-    if ok:
-        _slog("FIRST instance - returning server")
-        return server
-    # 已有实例 → 通知激活
-    _slog("Second instance detected - sending show signal")
+    # 先尝试连接 → 成功说明已有实例在监听
     sock = QLocalSocket()
     sock.connectToServer("DouClean_Instance")
-    if sock.waitForConnected(1000):
+    if sock.waitForConnected(500):
+        _slog("Connected to existing instance - sending show")
         sock.write(b'show')
         sock.waitForBytesWritten(500)
-        _slog("show signal sent OK")
-    else:
-        _slog(f"connect failed: {sock.errorString()}")
+        sock.close()
+        return None  # 已有实例
     sock.close()
-    return None
+    _slog("No existing instance - starting new server")
+    # 没有实例 → 创建 Server
+    server = QLocalServer()
+    server.listen("DouClean_Instance")
+    _slog(f"Server listening: {server.isListening()}")
+    return server
 
 
 def global_exception_handler(exc_type, exc_value, exc_tb):
