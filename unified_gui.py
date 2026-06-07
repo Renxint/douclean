@@ -847,7 +847,7 @@ class ModePage(QWidget):
         from PyQt6.QtWidgets import QInputDialog, QMessageBox
         text, ok = QInputDialog.getMultiLineText(
             self, "反馈建议",
-            "请描述你遇到的问题或建议（至少包含'反馈'二字）：\n(反馈将发送到开发者钉钉)",
+            "请描述你遇到的问题或建议（至少包含'抖净'二字）：",
             ""
         )
         if not ok or not text.strip():
