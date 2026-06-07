@@ -152,34 +152,25 @@ import requests
 # ============================================================
 # 全局：单实例 + 异常钩子
 # ============================================================
-import socket
-_instance_port = 19998
+from PyQt6.QtNetwork import QLocalServer, QLocalSocket
 
-
-_instance_socket = None  # 全局持有，MainWindow 用 QTimer 监听
+_instance_socket = None  # 全局持有 QLocalServer 引用
 
 
 def setup_single_instance():
-    """单实例检测 + 已运行则通知旧窗口激活"""
-    try:
-        # 尝试绑定端口 → 首个实例
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        s.bind(('127.0.0.1', _instance_port))
-        s.listen(1)
-        s.setblocking(False)
-        return s  # 返回 socket，进程持有端口
-    except OSError:
-        # 端口被占用 → 已有实例，通知它激活窗口
-        try:
-            c = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            c.settimeout(1)
-            c.connect(('127.0.0.1', _instance_port))
-            c.sendall(b'show')
-            c.close()
-        except Exception:
-            pass
-        return None
+    """单实例检测 + 已运行则通知旧窗口激活 (Qt LocalServer)"""
+    server = QLocalServer()
+    server.listen("DouClean_Instance")
+    if server.isListening():
+        return server  # 首个实例
+    # 已有实例 → 通知激活
+    sock = QLocalSocket()
+    sock.connectToServer("DouClean_Instance")
+    if sock.waitForConnected(500):
+        sock.write(b'show')
+        sock.waitForBytesWritten(500)
+        sock.close()
+    return None
 
 
 def global_exception_handler(exc_type, exc_value, exc_tb):
@@ -1494,28 +1485,23 @@ class MainWindow(QMainWindow):
         # 快捷键
         self._setup_shortcuts()
 
-        # socket 监听：收到双开通知时弹窗
+        # QLocalServer 监听：收到双开通知时弹窗
         if _instance_socket:
-            self._instance_socket = _instance_socket
-            self._instance_timer = QTimer()
-            self._instance_timer.timeout.connect(self._check_instance)
-            self._instance_timer.start(500)
+            self._instance_srv = _instance_socket
+            self._instance_srv.newConnection.connect(self._on_second_instance)
 
         # 启动后延迟检查版本更新（主线程，QTimer）
         QTimer.singleShot(2000, self._check_version)
 
-    def _check_instance(self):
-        """检查是否有第二个实例发来的激活信号"""
-        try:
-            conn, _ = self._instance_socket.accept()
-            data = conn.recv(4)
+    def _on_second_instance(self):
+        """第二个实例发来激活信号"""
+        conn = self._instance_srv.nextPendingConnection()
+        if conn:
+            conn.waitForReadyRead(500)
+            data = bytes(conn.readAll())
             conn.close()
             if data == b'show':
                 self._show_from_tray()
-        except BlockingIOError:
-            pass
-        except Exception:
-            pass
 
     def _setup_shortcuts(self):
         from PyQt6.QtGui import QShortcut, QKeySequence
@@ -1607,7 +1593,6 @@ class MainWindow(QMainWindow):
         except: pass
         if self._tray:
             self._tray.hide()
-        # 释放单实例 socket
         try:
             if _instance_socket:
                 _instance_socket.close()
