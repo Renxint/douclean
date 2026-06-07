@@ -788,6 +788,7 @@ class ModePage(QWidget):
         self.settings_btn = QPushButton("设置")
         self.settings_btn.setObjectName("secondaryBtn")
         self.settings_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.settings_btn.clicked.connect(self.settings_clicked)
         self.settings_btn.setFixedWidth(110)
         bottom_layout.addWidget(self.settings_btn)
         self.feedback_btn = QPushButton("反馈建议")
