@@ -1561,12 +1561,12 @@ class UpdatePage(QWidget):
             self.cancel_btn.setText("返回")
 
     def _do_restart(self):
-        QApplication.quit()
-        # 启动新版本（由 _startup_swap_if_needed 在 main() 中处理）
-        python = sys.executable
+        # 启动当前 exe → main() 中 _startup_swap_if_needed 会检测 _new 并替换
         exe = EXE_DIR / "抖净.exe"
         if exe.exists():
-            subprocess.Popen([str(exe)], cwd=str(EXE_DIR))
+            subprocess.Popen([str(exe)], cwd=str(EXE_DIR),
+                           creationflags=CREATE_NO_WINDOW if sys.platform == 'win32' else 0)
+        os._exit(0)
 
 
 class MainWindow(QMainWindow):
