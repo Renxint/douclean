@@ -610,13 +610,63 @@ class ModePage(QWidget):
         layout.addWidget(status)
 
     def _choose_font(self):
-        from PyQt6.QtWidgets import QFontDialog
-        current = load_font() or self.font()
-        font, ok = QFontDialog.getFont(
-            current, self, "选择字体",
-            QFontDialog.FontDialogOption.DontUseNativeDialog
-        )
-        if ok:
+        from PyQt6.QtWidgets import QDialog, QFontComboBox, QSpinBox, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QDialogButtonBox
+        dlg = QDialog(self)
+        dlg.setWindowTitle("字体设置")
+        dlg.resize(400, 150)
+        layout = QVBoxLayout(dlg)
+
+        # 字体选择
+        row1 = QHBoxLayout()
+        row1.addWidget(QLabel("字体:"))
+        combo = QFontComboBox()
+        combo.setEditable(False)
+        row1.addWidget(combo, 1)
+        layout.addLayout(row1)
+
+        # 字号选择
+        row2 = QHBoxLayout()
+        row2.addWidget(QLabel("字号:"))
+        spin = QSpinBox()
+        spin.setRange(8, 48)
+        spin.setValue(10)
+        row2.addWidget(spin)
+        row2.addStretch()
+        layout.addLayout(row2)
+
+        # 预览
+        preview = QLabel("预览效果 ABC 中文")
+        preview.setMinimumHeight(40)
+        preview.setStyleSheet("border: 1px solid #0f3460; border-radius: 4px; padding: 8px;")
+        layout.addWidget(preview)
+
+        # 当前设置
+        current = load_font()
+        if current:
+            combo.setCurrentFont(current)
+            spin.setValue(current.pointSize())
+        else:
+            combo.setCurrentFont(self.font())
+            spin.setValue(self.font().pointSize())
+
+        def on_change():
+            f = combo.currentFont()
+            f.setPointSize(spin.value())
+            preview.setFont(f)
+
+        combo.currentFontChanged.connect(on_change)
+        spin.valueChanged.connect(on_change)
+        on_change()
+
+        # 按钮
+        btns = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        btns.accepted.connect(dlg.accept)
+        btns.rejected.connect(dlg.reject)
+        layout.addWidget(btns)
+
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            font = combo.currentFont()
+            font.setPointSize(spin.value())
             save_font(font)
             self.font_changed.emit(font)
 
