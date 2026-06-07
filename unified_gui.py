@@ -612,7 +612,10 @@ class ModePage(QWidget):
     def _choose_font(self):
         from PyQt6.QtWidgets import QFontDialog
         current = load_font() or self.font()
-        font, ok = QFontDialog.getFont(current, self, "选择字体")
+        font, ok = QFontDialog.getFont(
+            current, self, "选择字体",
+            QFontDialog.FontDialogOption.DontUseNativeDialog
+        )
         if ok:
             save_font(font)
             self.font_changed.emit(font)
