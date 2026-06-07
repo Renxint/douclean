@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-抖音下载器 — 统一界面
+抖净 DouClean — 统一界面
 
 模式:
   1. 单视频下载 — 分享链接 → 下载视频/图集/实况
@@ -556,7 +556,7 @@ class ModePage(QWidget):
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.setSpacing(30)
 
-        title = QLabel("抖音下载器")
+        title = QLabel("抖净 DouClean")
         title.setStyleSheet("font-size: 28px; font-weight: bold; color: #e94560;")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
@@ -632,7 +632,7 @@ class ModePage(QWidget):
             info = f"Win{platform.release()} | v{VERSION}"
             payload = {
                 "msgtype": "text",
-                "text": {"content": f"[抖音下载器反馈]\n系统: {info}\n内容:\n{text.strip()}"}
+                "text": {"content": f"[抖净 DouClean 反馈]\n系统: {info}\n内容:\n{text.strip()}"}
             }
             r = req.post(DINGTALK_WEBHOOK, json=payload, timeout=10)
             if r.json().get("errcode") == 0:
@@ -1024,7 +1024,7 @@ class HomepagePage(QWidget):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("抖音下载器")
+        self.setWindowTitle("抖净 DouClean")
         self.resize(800, 620)
         self.setMinimumSize(600, 450)
         self.setStyleSheet(STYLE)
